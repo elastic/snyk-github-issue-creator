@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const prompt = require('prompt');
 const optimist = require('optimist');
 const uuidValidate = require('uuid-validate');
