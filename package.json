@@ -1,0 +1,25 @@
+{
+  "name": "jira-issue-creator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "snyk": "./cli/index.js"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "markdown2confluence-cws": "^2.0.4",
+    "optimist": "^0.6.1",
+    "prompt": "^1.0.0",
+    "request": "^2.85.0",
+    "request-promise": "^4.2.2",
+    "uuid-validate": "0.0.2"
+  }
+}
