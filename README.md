@@ -1,6 +1,8 @@
 # Jira Issue Creator
 
-Creates Jira issues from Snyk Project issues
+Creates Jira issues from Snyk Project issues.
+
+> Note: This module is a proof of concept for how you can use the Snyk Jira integration via the API. We hope to roll the findings from this module into the Snyk CLI eventually, so consider this a work in progress.
 
 ## Prerequisites
 
@@ -15,10 +17,10 @@ You can install this globally by running:
 npm install -g @snyk/jira-issue-creator
 ```
 
-This will make the tool available by running:
+You can find usage instructions by running:
 
 ```bash
-snyk-jira-issue-creator
+snyk-jira-issue-creator --help
 ```
 
 ## Usage
