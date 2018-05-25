@@ -1,5 +1,7 @@
 # Jira Issue Creator
 
+[![Known Vulnerabilities](https://snyk.io/test/github/snyk/snyk-jira-issue-creator/badge.svg)](https://snyk.io/test/github/snyk/snyk-jira-issue-creator)
+
 Creates Jira issues from Snyk Project issues.
 
 > Note: This module is a proof of concept for how you can use the Snyk Jira integration via the API. We hope to roll the findings from this module into the Snyk CLI eventually, so consider this a work in progress.
