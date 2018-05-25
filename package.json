@@ -1,6 +1,6 @@
 {
   "name": "@snyk/jira-issue-creator",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -15,6 +15,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chalk": "^2.4.1",
     "enquirer": "^1.0.3",
     "markdown2confluence-cws": "^2.0.4",
     "minimist": "^1.2.0",

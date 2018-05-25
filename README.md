@@ -23,19 +23,24 @@ snyk-jira-issue-creator
 
 ## Usage
 
-The simplest way to use this is in guided mode, by running:
-
-```bash
-snyk-jira-issue-creator
-```
-
-Alternatively, you can specify the org, project, Jira project,
-Jira issue type and Jira URL upfront by running with command line arguments:
-
 ```bash
 snyk-jira-issue-creator --orgId=<orgId> --projectId=<projectId> --jiraProjectId=<jiraProjectId> --jiraIssueTypeId=<jiraIssueTypeId> --jiraUrl=https://<subdomain>.atlassian.net
 ```
 
+- You can retrieve your orgId from your org settings page on [Snyk](https://snyk.io) or via the [Snyk API](https://snyk.docs.apiary.io/#reference/organisations/the-snyk-organisation-for-a-request/list-all-the-organisations-a-user-belongs-to).
+- The projectId is available via the [Snyk API](https://snyk.docs.apiary.io/#reference/projects/projects-by-organisation/list-all-projects).
+- Both the jiraProjectId and jiraIssueTypeId can be found via the Jira API
+- The Jira URL is the domain you see when you visit your Jira install.
+
 You will be presented with a list of vulnerability & license issues to
 generate a Jira issue for. Type `t` or `true` to create an issue,
 and `f` or `false` to skip it.
+
+### Including existing issues
+
+If you want to create multiple Jira issues for the same issue, include the flag `--includeExisting` and you will be presented with
+existing issues.
+
+### Auto generating Jira issues
+
+If you wish to automatically generate Jira issues (e.g. if you want to run this as part of a CI pipeline), enter the flag `--autoGenerate`.
