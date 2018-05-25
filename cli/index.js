@@ -1,46 +1,42 @@
 #!/usr/bin/env node
 
-const prompt = require('prompt');
-const optimist = require('optimist');
+const Enquirer = require('enquirer');
+const args = require('minimist')(process.argv.slice(2));
 const uuidValidate = require('uuid-validate');
-const request = require('request-promise');
-const markdown2confluence = require("markdown2confluence-cws");
+const request = require('request-promise-native');
+const markdown2confluence = require('markdown2confluence-cws');
 
-prompt.start();
+const help = 'Usage: snyk-jira-issue-creator --orgId=<orgId> --projectId=<projectId> ' +
+  '--jiraProjectId=<jiraProjectId> --jiraIssueTypeId=<jiraIssueTypeId> ' +
+  '--jiraUrl=https://<subdomain>.atlassian.net';
 
-prompt.message = '';
+if (args.help || args.h) {
+  console.log(help);
+  return process.exit(0);
+}
 
-prompt.override = optimist.argv
+const validators = {
+  orgId: uuidValidate,
+  projectId: uuidValidate,
+  jiraProjectId: id => !!id,
+  jiraIssueTypeId: id => !!id,
+  jiraUrl: id => !!id,
+};
 
-prompt.get({
-  properties: {
-    orgId: {
-      description: 'Enter the org ID',
-      message: 'Org ID should be a valid UUID',
-      conform: value => uuidValidate(value),
-      required: true,
-    },
-    projectId: {
-      description: 'Enter the project ID',
-      message: 'Project ID should be a valid UUID',
-      conform: value => uuidValidate(value),
-      required: true,
-    },
-    jiraProjectId: {
-      description: 'Enter the Jira project ID',
-      required: true,
-    },
-    jiraIssueTypeId: {
-      description: 'Enter the Jira issue type ID',
-      required: true,
-    },
-    jiraUrl: {
-      description: 'Enter the URL for your Jira install',
-      required: true,
-      format: 'url',
-    }
-  },
-}, async (err, config) => {
+const invalidArgs = Object.keys(validators).filter(key =>
+  !validators[key](args[key])
+);
+
+if (invalidArgs.length > 0) {
+  console.log(`Invalid args passed: ${invalidArgs.join(', ')}`);
+  console.log(help);
+  return process.exit(1);
+}
+
+const enquirer = new Enquirer();
+enquirer.register('confirm', require('prompt-confirm'));
+
+async function createIssues (config) {
   const apiBase = 'https://snyk.io/api/v1';
   const apiKey = process.env.SNYK_TOKEN;
 
@@ -66,23 +62,22 @@ prompt.get({
 
   const issues = projectIssues.issues.vulnerabilities.concat(projectIssues.issues.licenses);
 
-  const issuePrompts = issues.map(issue => ({
-    name: issue.id,
-    description: `Create Jira issue for "${issue.title}" in ${issue.package} (${issue.id})?`,
-    type: 'boolean',
-    default: false,
-  }));
+  const issueQuestions = [];
 
-  const issueChoices = await new Promise((resolve, reject) => {
-    prompt.get(issuePrompts, async (err, results) => {
-      if (err) {
-        return reject(err);
-      }
-      resolve(results);
+  issues.forEach(issue => {
+    const name = `question-${issue.id}`;
+    enquirer.question({
+      name,
+      type: 'confirm',
+      message: `Create Jira issue for "${issue.title}" in ${issue.package} (${issue.id})?`,
+      default: false,
     });
+    issueQuestions.push(name);
   });
 
-  const issuesToAction = issues.filter(issue => issueChoices[issue.id]);
+  const issueAnswers = await enquirer.prompt(issueQuestions);
+
+  const issuesToAction = issues.filter(issue => issueAnswers[`question-${issue.id}`]);
 
   const jiraIssues = await Promise.all(issuesToAction.map(issue => request({
     method: 'post',
@@ -95,11 +90,16 @@ prompt.get({
         project: {id: config.jiraProjectId},
         issuetype: {id: config.jiraIssueTypeId},
         summary: `${project.name} - ${issue.title} in ${issue.package}`,
-        description:markdown2confluence(issue.description),
+        description: markdown2confluence(issue.description),
       },
     },
     json: true,
   })));
+
+  if (jiraIssues.length === 0) {
+    console.log('No Jira issues were created');
+    return process.exit(0);
+  }
 
   console.log('The following Jira issues were created:');
   jiraIssues.forEach(jiraIssueByIssue => {
@@ -112,4 +112,12 @@ prompt.get({
       });
     });
   });
-});
+
+  process.exit(0);
+}
+
+createIssues(args)
+.catch(err => {
+  console.error(err.stack);
+  process.exit(1);
+})

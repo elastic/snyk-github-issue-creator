@@ -1,6 +1,6 @@
 {
   "name": "@snyk/jira-issue-creator",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -15,11 +15,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "enquirer": "^1.0.3",
     "markdown2confluence-cws": "^2.0.4",
-    "optimist": "^0.6.1",
-    "prompt": "^1.0.0",
-    "request": "^2.85.0",
-    "request-promise": "^4.2.2",
+    "minimist": "^1.2.0",
+    "prompt-confirm": "^1.2.0",
+    "request": "^2.87.0",
+    "request-promise-native": "^1.0.5",
     "uuid-validate": "0.0.2"
   }
 }
