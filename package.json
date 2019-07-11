@@ -21,7 +21,8 @@
     "minimist": "^1.2.0",
     "prompt-confirm": "^1.2.0",
     "request": "^2.87.0",
-    "request-promise-native": "^1.0.5",
+    "request-promise-native": "^1.0.7",
+    "snyk": "^1.193.0",
     "uuid-validate": "0.0.2"
   }
 }
