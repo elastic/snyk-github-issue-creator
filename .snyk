@@ -9,18 +9,18 @@ ignore:
   SNYK-JS-SETVALUE-450213:
     - enquirer > set-value:
         reason: CLI internal tool only
-        expires: '2019-08-10T12:24:42.204Z'
+        expires: '2020-08-10T12:24:42.204Z'
       prompt-confirm > prompt-base > prompt-question > prompt-choices > set-value:
         reason: None given
-        expires: '2019-08-10T12:28:27.657Z'
+        expires: '2020-08-10T12:28:27.657Z'
     - enquirer > prompt-question > prompt-choices > set-value:
         reason: CLI internal tool only
-        expires: '2019-08-10T12:24:42.204Z'
+        expires: '2020-08-10T12:24:42.204Z'
     - enquirer > prompt-input > prompt-base > prompt-question > prompt-choices > set-value:
         reason: CLI internal tool only
-        expires: '2019-08-10T12:24:42.204Z'
+        expires: '2020-08-10T12:24:42.204Z'
   SNYK-JS-MARKED-451540:
     - markdown2confluence-cws > marked:
         reason: None given
-        expires: '2019-08-10T12:24:42.204Z'
+        expires: '2020-08-10T12:24:42.204Z'
 patch: {}
