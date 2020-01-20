@@ -1,13 +1,13 @@
 {
-  "name": "@snyk/jira-issue-creator",
-  "version": "1.0.4",
+  "name": "snyk-github-issue-creator",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "bin": {
-    "snyk-jira-issue-creator": "./cli/index.js"
+    "snyk-github-issue-creator": "./cli/index.js"
   },
   "engines": {
     "node": ">=8"
