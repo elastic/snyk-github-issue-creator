@@ -6,7 +6,7 @@ Creates GitHub issues from Snyk Project issues.
 
 To use this tool you must first set:
 1. an environment variable `SNYK_TOKEN` with your API key, as found at https://snyk.io/account.
-1. an environment variable `GH_TOKEN` with 
+1. an environment variable `GH_PAT` with a GitHub personal access token having enough privilege to create issues.
 
 ## Usage
 You can find usage instructions by running:
