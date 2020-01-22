@@ -14,7 +14,7 @@ const ghPat = process.env.GH_PAT;
 
 const help = 'Usage: snyk-github-issue-creator --snykOrg=<snykOrg> --snykProject=<snykProject> ' +
   '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
-  '--ghLabels=<ghLabel>,... --projectPath=<projectPath> --autoGenerate';
+  '--ghLabels=<ghLabel>,... --projectName=<projectName> --autoGenerate';
 
 if (args.help || args.h) {
   console.log(help);
@@ -107,18 +107,17 @@ async function createIssues () {
   process.exit(0);
 }
 
-function getProjectPath(project) {
-  return ((typeof args.projectPath !== 'undefined') ?  args.projectPath: '') + project.name; 
+function getProjectName(project) {
+  return ((typeof args.projectName !== 'undefined') ?  args.projectName: project.name); 
 }
 
 function getGraph(project, issue) {
-  return getProjectPath(project) + " > " + issue.from.join(" > ");
+  return getProjectName(project) + " > " + issue.from.join(" > ");
 }
 
 async function generateGhIssues (project, issues) {
   const labels = (typeof args.ghLabels !== "undefined") ? args.ghLabels.split(",") : [];
 
-  const projectPath = getProjectPath(project);
   const ghIssues = await Promise.all( issues.map(issue => request({
     method: 'post',
     url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
@@ -127,7 +126,7 @@ async function generateGhIssues (project, issues) {
       authorization: `token ${ghPat}`,
     },
     body: {
-	title: `${projectPath} - ${issue.title} in ${issue.package} ${issue.version}`,
+	title: `${getProjectName(project)} - ${issue.title} in ${issue.package} ${issue.version}`,
         body: `This issue has been created automatically by a source code scanner\r\n## Third party component with known security vulnerabilities\r\n${getGraph(project,issue)}\r\n${issue.description}\r\n- [${issue.id}](${issue.url})\r\n`,
         labels
     },
