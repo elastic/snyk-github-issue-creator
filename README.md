@@ -33,7 +33,11 @@ If you wish to automatically generate GitHub issues and force the confirmation p
 
 ### Examples
 
-Running the script against this repository will create a set of [issues](issues)
+Running the script against this repository will create a set of [issues](https://github.com/pierre-ernst/snyk-github-issue-creator/issues)
+
+
 As seen here:
+
 ![screen shot of a created issue](screenshot-issue-dogfooding.png)
+
 
