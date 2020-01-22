@@ -30,3 +30,10 @@ and `f` or `false` to skip it.
 ### Auto generating gitHub issues
 
 If you wish to automatically generate GitHub issues and force the confirmation prompt (e.g. if you want to run this as part of a CI pipeline), enter the flag `--autoGenerate`.
+
+### Examples
+
+Running the script against this repository will create a set of [issues](issues)
+As seen here:
+![screen shot of a created issue](screenshot-issue-dogfooding.png)
+
