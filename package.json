@@ -12,16 +12,15 @@
   "engines": {
     "node": ">=8"
   },
-  "author": "",
+  "author": "pierre-ernst",
   "license": "ISC",
   "dependencies": {
-    "chalk": "^2.4.1",
-    "enquirer": "^1.0.3",
-    "markdown2confluence-cws": "^2.0.4",
+    "chalk": "^3.0.0",
+    "enquirer": "^1.0.2",
+    "prompt-confirm": "^2.0.4",
     "minimist": "^1.2.0",
-    "prompt-confirm": "^1.2.0",
-    "request": "^2.87.0",
+    "request": "^2.88.0",
     "request-promise-native": "^1.0.8",
-    "uuid-validate": "0.0.3"
+    "uuid-validate": "^0.0.3"
   }
 }

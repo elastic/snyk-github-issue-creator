@@ -4,15 +4,17 @@ const Enquirer = require('enquirer');
 const args = require('minimist')(process.argv.slice(2));
 const uuidValidate = require('uuid-validate');
 const request = require('request-promise-native');
-const markdown2confluence = require('markdown2confluence-cws');
 const chalk = require('chalk');
 
-const apiBase = 'https://snyk.io/api/v1';
-const apiKey = process.env.SNYK_TOKEN;
+const snykBaseUrl = 'https://snyk.io/api/v1';
+const snykToken = process.env.SNYK_TOKEN;
 
-const help = 'Usage: snyk-jira-issue-creator --orgId=<orgId> --projectId=<projectId> ' +
-  '--jiraProjectId=<jiraProjectId> --jiraIssueTypeId=<jiraIssueTypeId> ' +
-  '--jiraUrl=https://<subdomain>.atlassian.net --includeExisting --autoGenerate';
+const ghBaseUrl = 'https://api.github.com';
+const ghPat = process.env.GH_PAT;
+
+const help = 'Usage: snyk-github-issue-creator --snykOrg=<snykOrg> --snykProject=<snykProject> ' +
+  '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
+  '--ghLabels=<ghLabel>,... --projectPath=<projectPath> --autoGenerate';
 
 if (args.help || args.h) {
   console.log(help);
@@ -20,11 +22,10 @@ if (args.help || args.h) {
 }
 
 const validators = {
-  orgId: uuidValidate,
-  projectId: uuidValidate,
-  jiraProjectId: id => !!id,
-  jiraIssueTypeId: id => !!id,
-  jiraUrl: id => !!id,
+  snykOrg: id => !!id,
+  snykProject: uuidValidate,
+  ghOwner: id => !!id,
+  ghRepo: id => !!id,
 };
 
 const invalidArgs = Object.keys(validators).filter(key =>
@@ -37,50 +38,43 @@ if (invalidArgs.length > 0) {
   return process.exit(1);
 }
 
-const includeExisting = !!args.includeExisting;
 const autoGenerate = !!args.autoGenerate;
-
-console.log(chalk.grey(`Existing Jira issues will ${includeExisting ? '' : 'not '}be included`));
 
 const enquirer = new Enquirer();
 enquirer.register('confirm', require('prompt-confirm'));
 
 async function createIssues () {
+
+	
   const projects = await request({
     method: 'get',
-    url: `${apiBase}/org/${args.orgId}/projects`,
+    url: `${snykBaseUrl}/org/${args.snykOrg}/projects`,
     headers: {
-      authorization: `token ${apiKey}`,
+      authorization: `token ${snykToken}`,
     },
     json: true,
   });
 
   const projectIssues = await request({
     method: 'post',
-    url: `${apiBase}/org/${args.orgId}/project/${args.projectId}/issues`,
+    url: `${snykBaseUrl}/org/${args.snykOrg}/project/${args.snykProject}/issues`,
     headers: {
-      authorization: `token ${apiKey}`,
+      authorization: `token ${snykToken}`,
+    },
+    body: {
+	filters: {
+		"severities": ["high", "medium"], 
+		"types": ["vuln"], 
+		"ignored":false, 
+		"patched":false
+	}
     },
     json: true,
   });
 
-  const existingJiraIssues = await request({
-    method: 'get',
-    url: `${apiBase}/org/${args.orgId}/project/${args.projectId}/jira-issues`,
-    headers: {
-      authorization: `token ${apiKey}`,
-    },
-    json: true,
-  });
-
-  const project = projects.projects.find(project => project.id === args.projectId);
-
-  const issues = projectIssues.issues.vulnerabilities.concat(projectIssues.issues.licenses).filter(issue => {
-    if (!includeExisting && existingJiraIssues[issue.id]) {
-      return false;
-    }
-    return true;
-  });
+  const project = projects.projects.find(project => project.id === args.snykProject);
+  
+  const issues = projectIssues.issues.vulnerabilities;
 
   if (issues.length === 0) {
     console.log(chalk.green('No issues to create'));
@@ -88,65 +82,65 @@ async function createIssues () {
   }
 
   if (autoGenerate) {
-    console.log(chalk.grey(`Auto-generating Jira issues for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
-    await generateJiraIssues(project, issues);
+    console.log(chalk.grey(`Auto-generating GitHub issues for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
+    await generateGhIssues(project, issues);
     return process.exit(0);
   }
 
   const issueQuestions = [];
 
   issues.forEach(issue => {
-    const name = `question-${issue.id}`;
-    enquirer.question({
-      name,
+    issueQuestions.push({
+      name: `question-${issue.id}`,
       type: 'confirm',
-      message: `Create Jira issue for "${issue.title}" in ${issue.package} (${issue.id})?`,
-      default: false,
+      message: `Create GitHub issue for "${issue.title}" in ${getGraph(project,issue)} (${issue.id})?`,
+      default: false
     });
-    issueQuestions.push(name);
   });
 
-  const issueAnswers = await enquirer.prompt(issueQuestions);
-
+  const issueAnswers = await enquirer.ask(issueQuestions);
+  
   const issuesToAction = issues.filter(issue => issueAnswers[`question-${issue.id}`]);
 
-  await generateJiraIssues(project, issuesToAction);
+  await generateGhIssues(project, issuesToAction);
 
   process.exit(0);
 }
 
-async function generateJiraIssues (project, issues) {
-  const jiraIssues = await Promise.all(issues.map(issue => request({
+function getProjectPath(project) {
+  return ((typeof args.projectPath !== 'undefined') ?  args.projectPath: '') + project.name; 
+}
+
+function getGraph(project, issue) {
+  return getProjectPath(project) + " > " + issue.from.join(" > ");
+}
+
+async function generateGhIssues (project, issues) {
+  const labels = (typeof args.ghLabels !== "undefined") ? args.ghLabels.split(",") : [];
+
+  const projectPath = getProjectPath(project);
+  const ghIssues = await Promise.all( issues.map(issue => request({
     method: 'post',
-    url: `${apiBase}/org/${args.orgId}/project/${args.projectId}/issue/${issue.id}/jira-issue`,
+    url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
     headers: {
-      authorization: `token ${apiKey}`,
+      "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
+      authorization: `token ${ghPat}`,
     },
     body: {
-      fields: {
-        project: {id: args.jiraProjectId},
-        issuetype: {id: args.jiraIssueTypeId},
-        summary: `${project.name} - ${issue.title} in ${issue.package}`,
-        description: markdown2confluence(issue.description),
-      },
+	title: `${projectPath} - ${issue.title} in ${issue.package} ${issue.version}`,
+        body: `This issue has been created automatically by a source code scanner\r\n## Third party component with known security vulnerabilities\r\n${getGraph(project,issue)}\r\n${issue.description}\r\n- [${issue.id}](${issue.url})\r\n`,
+        labels
     },
     json: true,
   })));
 
-  if (jiraIssues.length === 0) {
-    return console.log(chalk.green('No Jira issues were created'));
+  if (ghIssues.length === 0) {
+    return console.log(chalk.green('No GitHub issues were created'));
   }
 
-  console.log(chalk.green('The following Jira issues were created:'));
-  jiraIssues.forEach(jiraIssueByIssue => {
-    Object.keys(jiraIssueByIssue).forEach(issueId => {
-      const issue = issues.find(issue => issue.id === issueId);
-      console.log(`- "${issue.title}" in ${issue.package} (${issue.id})`);
-
-      jiraIssueByIssue[issueId].forEach(({jiraIssue}) => {
-        console.log(`  ${args.jiraUrl}/browse/${jiraIssue.key}`);
-      });
-    });
+  console.log(chalk.green('The following GitHub issues were created:'));
+  ghIssues.forEach(ghIssue => {
+    console.log(`- "${ghIssue.title}" ${ghIssue.url}`);
   });
 }
 
@@ -155,3 +149,4 @@ createIssues()
   console.error(err.stack);
   process.exit(1);
 })
+
