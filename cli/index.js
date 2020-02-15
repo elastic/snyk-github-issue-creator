@@ -6,6 +6,8 @@ const uuidValidate = require('uuid-validate');
 const request = require('request-promise-native');
 const chalk = require('chalk');
 
+const { compareText } = require('./utils');
+
 const snykBaseUrl = 'https://snyk.io/api/v1';
 const snykToken = process.env.SNYK_TOKEN;
 
@@ -73,8 +75,9 @@ async function createIssues () {
   });
 
   const project = projects.projects.find(project => project.id === args.snykProject);
-  
-  const issues = projectIssues.issues.vulnerabilities;
+
+  // sort issues in descending order of severity, then ascending order of title
+  const issues = projectIssues.issues.vulnerabilities.sort((a, b) => compareText(a.severity, b.severity) || compareText(a.title, b.title));
 
   if (issues.length === 0) {
     console.log(chalk.green('No issues to create'));
