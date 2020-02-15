@@ -89,9 +89,10 @@ async function createIssues () {
 
   const issueQuestions = [];
 
+  let ctr = 0;
   issues.forEach(issue => {
     issueQuestions.push({
-      name: `question-${issue.id}`,
+      name: `question-${ctr++}`,
       type: 'confirm',
       message: `Create GitHub issue for "${issue.title}" in ${getGraph(project,issue)} (${issue.id})?`,
       default: false
@@ -100,7 +101,7 @@ async function createIssues () {
 
   const issueAnswers = await enquirer.ask(issueQuestions);
   
-  const issuesToAction = issues.filter(issue => issueAnswers[`question-${issue.id}`]);
+  const issuesToAction = issues.filter((_issue, i) => issueAnswers[`question-${i}`]);
 
   await generateGhIssues(project, issuesToAction);
 
