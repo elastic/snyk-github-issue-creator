@@ -140,7 +140,7 @@ async function generateGhIssues (project, issues) {
 
   console.log(chalk.green('The following GitHub issues were created:'));
   ghIssues.forEach(ghIssue => {
-    console.log(`- "${ghIssue.title}" ${ghIssue.url}`);
+    console.log(`- "${ghIssue.title}" ${ghIssue.url.replace('api.github.com/repos', 'github.com')}`);
   });
 }
 
