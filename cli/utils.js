@@ -9,6 +9,12 @@ const compareText = (a, b) => {
   return 0;
 };
 
+const capitalize = (s) => {
+  if (typeof s !== 'string') return ''
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 module.exports = {
+  capitalize,
   compareText
 };

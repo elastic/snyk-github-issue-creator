@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
-const Enquirer = require('enquirer');
+const { prompt } = require('enquirer');
 const args = require('minimist')(process.argv.slice(2));
 const uuidValidate = require('uuid-validate');
 const request = require('request-promise-native');
 const chalk = require('chalk');
 
-const { compareText } = require('./utils');
+const { getBatchProps } = require('./batch');
+const { capitalize, compareText } = require('./utils');
 
 const snykBaseUrl = 'https://snyk.io/api/v1';
 const snykToken = process.env.SNYK_TOKEN;
@@ -16,7 +17,7 @@ const ghPat = process.env.GH_PAT;
 
 const help = 'Usage: snyk-github-issue-creator --snykOrg=<snykOrg> --snykProject=<snykProject> ' +
   '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
-  '--ghLabels=<ghLabel>,... --projectName=<projectName> --parseManifestName --autoGenerate';
+  '--ghLabels=<ghLabel>,... --projectName=<projectName> --parseManifestName --batch --autoGenerate';
 
 if (args.help || args.h) {
   console.log(help);
@@ -41,9 +42,7 @@ if (invalidArgs.length > 0) {
 }
 
 const autoGenerate = !!args.autoGenerate;
-
-const enquirer = new Enquirer();
-enquirer.register('confirm', require('prompt-confirm'));
+const batch = !!args.batch;
 
 async function createIssues () {
 
@@ -97,8 +96,18 @@ async function createIssues () {
   }, {});
   issues = Object.values(reduced);
 
+  const batchProps = batch && await getBatchProps(issues);
+  if (batchProps) {
+    // filter down to the package that was picked
+    issues = batchProps.issues;
+  }
+
   if (autoGenerate) {
-    console.log(chalk.grey(`Auto-generating GitHub issues for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
+    if (batch) {
+      console.log(chalk.grey(`Auto-generating a single GitHub issue for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
+    } else {
+      console.log(chalk.grey(`Auto-generating GitHub issues for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
+    }
     await generateGhIssues(project, issues);
     return process.exit(0);
   }
@@ -114,14 +123,15 @@ async function createIssues () {
 ${getGraph(project, issue, ' * ')}
 `);
     issueQuestions.push({
+      type: 'confirm',
       name: `question-${ctr++}`,
       type: 'confirm',
-      message: `Create GitHub issue for ${description}?`,
+      message: batch ? `Add ${description} to batch?` : `Create GitHub issue for ${description}?`,
       default: false
     });
   });
 
-  const issueAnswers = await enquirer.ask(issueQuestions);
+  const issueAnswers = await prompt(issueQuestions);
 
   const issuesToAction = issues.filter((_issue, i) => issueAnswers[`question-${i}`]);
 
@@ -145,34 +155,80 @@ function getGraph(project, issue, prefix) {
   return issue.from.map(paths => `${prefix}${getManifestName(project)} > ${paths.join(' > ')}`).join('\r\n');
 }
 
-async function generateGhIssues (project, issues) {
+async function generateGhIssues(project, issues) {
   const labels = (typeof args.ghLabels !== "undefined") ? args.ghLabels.split(",") : [];
 
   const projectName = getProjectName(project);
-  const ghIssues = await Promise.all( issues.map(issue => request({
-    method: 'post',
-    url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
-    headers: {
-      "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
-      authorization: `token ${ghPat}`,
-    },
-    body: {
-	    title: `${projectName} - ${issue.title} in ${issue.package} ${issue.version}`,
-      body: `This issue has been created automatically by a source code scanner
+  let ghIssues = [];
+  if (batch && issues.length) {
+    const sevMap = issues.reduce((acc, cur) => {
+      acc[cur.severity] = (acc[cur.severity] || []).concat(cur);
+      return acc;
+    }, {});
+    const severities = Object.keys(sevMap).map(sev => capitalize(sev)).join(`/`);
+    const batchProps = await getBatchProps(issues);
 
-## Third party component with known security vulnerabilities
+    const title = `${getProjectName(project)} - ${issues.length} findings in ${batchProps.package} ${batchProps.version} (${severities})`;
 
-Introduced to ${projectName} through:
+    const text = Object.keys(sevMap).map(sev => {
+      const header = `# ${capitalize(sev)}-severity vulnerabilities`;
+      const body = sevMap[sev].map((issue, i) =>
+`\r\n\r\n<details>
+<summary>${i + 1}. ${issue.title} in ${issue.package} ${issue.version} (${issue.id})</summary>
 
+## Detailed paths
 ${getGraph(project, issue, '* ')}
 
 ${issue.description}
 - [${issue.id}](${issue.url})
+</details>`).join('');
+      return header + body;
+    }).join('\r\n\r\n');
+
+    ghIssues = [await request({
+      method: 'post',
+      url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
+      headers: {
+        "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
+        authorization: `token ${ghPat}`,
+      },
+      body: {
+        title,
+        body: `This issue has been created automatically by a source code scanner.
+
+Snyk project: [\`${project.name}\`](${project.browseUrl}) (manifest version ${project.imageTag})
+
+${text}`,
+        labels
+      },
+      json: true,
+    })];
+  } else {
+    ghIssues = await Promise.all( issues.map(issue => request({
+      method: 'post',
+      url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
+      headers: {
+        "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
+        authorization: `token ${ghPat}`,
+      },
+      body: {
+        title: `${getProjectName(project)} - ${issue.title} in ${issue.package} ${issue.version}`,
+        body: `This issue has been created automatically by a source code scanner
+
+  ## Third party component with known security vulnerabilities
+
+  Introduced to ${projectName} through:
+
+  ${getGraph(project, issue, '* ')}
+
+  ${issue.description}
+  - [${issue.id}](${issue.url})
 `,
-      labels
-    },
-    json: true,
-  })));
+        labels
+      },
+      json: true,
+    })));
+  }
 
   if (ghIssues.length === 0) {
     return console.log(chalk.green('No GitHub issues were created'));
