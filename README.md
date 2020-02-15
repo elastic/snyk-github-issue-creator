@@ -16,12 +16,13 @@ node ./cli/index.js --help
 ```
 
 ```bash
-node ./cli/index.js --snykOrg=<snykOrg> --snykProject=<snykProject> --ghOwner=<ghOwner> --ghRepo=<ghRepo> --ghLabels=<ghLabel>,... --projectName=<projectName> --autoGenerate
+node ./cli/index.js --snykOrg=<snykOrg> --snykProject=<snykProject> --ghOwner=<ghOwner> --ghRepo=<ghRepo> --ghLabels=<ghLabel>,... --projectName=<projectName> --parseManifestName --autoGenerate
 ```
 
 - You can retrieve your orgId from your org settings page on [Snyk](https://snyk.io) or via the [Snyk API](https://snyk.docs.apiary.io/#reference/organisations/the-snyk-organisation-for-a-request/list-all-the-organisations-a-user-belongs-to).
 - The projectId is available via the [Snyk API](https://snyk.docs.apiary.io/#reference/projects/projects-by-organisation/list-all-projects).
 - The optional projetName allows to overrride the project name from Snyk (usefull when runing Snyk with CI/CLI integration)
+- If `parseManifestName` is specified, the dependency paths will start with the manifest name instead of the project name
 
 You will be presented with a list of *high* and *medium* vulnerability issues to
 generate a GitHub issue for. Type `t` or `true` to create an issue,

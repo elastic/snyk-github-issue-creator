@@ -16,7 +16,7 @@ const ghPat = process.env.GH_PAT;
 
 const help = 'Usage: snyk-github-issue-creator --snykOrg=<snykOrg> --snykProject=<snykProject> ' +
   '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
-  '--ghLabels=<ghLabel>,... --projectName=<projectName> --autoGenerate';
+  '--ghLabels=<ghLabel>,... --projectName=<projectName> --parseManifestName --autoGenerate';
 
 if (args.help || args.h) {
   console.log(help);
@@ -77,12 +77,25 @@ async function createIssues () {
   const project = projects.projects.find(project => project.id === args.snykProject);
 
   // sort issues in descending order of severity, then ascending order of title
-  const issues = projectIssues.issues.vulnerabilities.sort((a, b) => compareText(a.severity, b.severity) || compareText(a.title, b.title));
+  let issues = projectIssues.issues.vulnerabilities.sort((a, b) => compareText(a.severity, b.severity) || compareText(a.title, b.title));
 
   if (issues.length === 0) {
     console.log(chalk.green('No issues to create'));
     return process.exit(0);
   }
+
+  // combine separate issues that have the same ID with different dependency paths
+  const reduced = issues.reduce((acc, cur) => {
+    let found = acc[cur.id];
+    if (found) {
+      found.from.push(cur.from);
+    } else {
+      cur.from = [cur.from]; // wrap this issue's "from" in an array
+      acc[cur.id] = cur;
+    }
+    return acc;
+  }, {});
+  issues = Object.values(reduced);
 
   if (autoGenerate) {
     console.log(chalk.grey(`Auto-generating GitHub issues for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
@@ -93,17 +106,23 @@ async function createIssues () {
   const issueQuestions = [];
 
   let ctr = 0;
-  issues.forEach(issue => {
+  console.log(`Found ${issues.length} vulnerabilities:
+`);
+  issues.forEach((issue, i) => {
+    const description = `${i+1}. ${issue.package} ${issue.version} - ${issue.title}`
+    console.log(`${description} - ${issue.id} (${issue.severity})
+${getGraph(project, issue, ' * ')}
+`);
     issueQuestions.push({
       name: `question-${ctr++}`,
       type: 'confirm',
-      message: `Create GitHub issue for "${issue.title}" in ${getGraph(project,issue)} (${issue.id})?`,
+      message: `Create GitHub issue for ${description}?`,
       default: false
     });
   });
 
   const issueAnswers = await enquirer.ask(issueQuestions);
-  
+
   const issuesToAction = issues.filter((_issue, i) => issueAnswers[`question-${i}`]);
 
   await generateGhIssues(project, issuesToAction);
@@ -115,13 +134,21 @@ function getProjectName(project) {
   return ((typeof args.projectName !== 'undefined') ?  args.projectName: project.name); 
 }
 
-function getGraph(project, issue) {
-  return getProjectName(project) + " > " + issue.from.join(" > ");
+function getManifestName(project) {
+  if (args.parseManifestName) {
+    return project.name.substring(project.name.indexOf(":") + 1);
+  }
+  return getProjectName(project);
+}
+
+function getGraph(project, issue, prefix) {
+  return issue.from.map(paths => `${prefix}${getManifestName(project)} > ${paths.join(' > ')}`).join('\r\n');
 }
 
 async function generateGhIssues (project, issues) {
   const labels = (typeof args.ghLabels !== "undefined") ? args.ghLabels.split(",") : [];
 
+  const projectName = getProjectName(project);
   const ghIssues = await Promise.all( issues.map(issue => request({
     method: 'post',
     url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
@@ -130,9 +157,19 @@ async function generateGhIssues (project, issues) {
       authorization: `token ${ghPat}`,
     },
     body: {
-	title: `${getProjectName(project)} - ${issue.title} in ${issue.package} ${issue.version}`,
-        body: `This issue has been created automatically by a source code scanner\r\n## Third party component with known security vulnerabilities\r\n${getGraph(project,issue)}\r\n${issue.description}\r\n- [${issue.id}](${issue.url})\r\n`,
-        labels
+	    title: `${projectName} - ${issue.title} in ${issue.package} ${issue.version}`,
+      body: `This issue has been created automatically by a source code scanner
+
+## Third party component with known security vulnerabilities
+
+Introduced to ${projectName} through:
+
+${getGraph(project, issue, '* ')}
+
+${issue.description}
+- [${issue.id}](${issue.url})
+`,
+      labels
     },
     json: true,
   })));
