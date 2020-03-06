@@ -1,13 +1,11 @@
 # GitHub Issue Creator
 
-[![Known Vulnerabilities](https://snyk.io/test/github/pierre-ernst/snyk-github-issue-creator/badge.svg?targetFile=package.json)](https://snyk.io/test/github/pierre-ernst/snyk-github-issue-creator?targetFile=package.json)
-
 Creates GitHub issues from Snyk Project issues.
 
 ## Prerequisites
 
 To use this tool you must first set:
-1. an environment variable `SNYK_TOKEN` with your API key, as found at https://app.snyk.io/account.
+1. an environment variable `SNYK_TOKEN` with your API key, as found at https://snyk.io/account.
 1. an environment variable `GH_PAT` with a GitHub personal access token having enough privilege to create issues.
 
 ## Usage
