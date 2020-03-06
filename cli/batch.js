@@ -1,6 +1,6 @@
 const { prompt } = require('enquirer');
 
-const uniq = (array) => [...new Set(array)];
+const { uniq } = require('./utils');
 
 const getBatchProps = async (issues) => {
   const packageNames = uniq(issues.map(x => x.package));

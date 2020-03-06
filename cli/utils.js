@@ -14,7 +14,10 @@ const capitalize = (s) => {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
+const uniq = (array) => [...new Set(array)];
+
 module.exports = {
   capitalize,
-  compareText
+  compareText,
+  uniq
 };
