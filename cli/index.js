@@ -225,6 +225,8 @@ ${text}`,
         title: `${getProjectName(project)} - ${issue.title} in ${issue.package} ${issue.version}`,
         body: `This issue has been created automatically by a source code scanner
 
+  SNYKUID:${issue.id}
+
   ## Third party component with known security vulnerabilities
 
   Introduced to ${projectName} through:
