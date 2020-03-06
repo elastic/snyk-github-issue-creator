@@ -7,7 +7,7 @@ const request = require('request-promise-native');
 const chalk = require('chalk');
 
 const { getBatchProps } = require('./batch');
-const { capitalize, compareText } = require('./utils');
+const { capitalize, compareText, uniq } = require('./utils');
 
 const snykBaseUrl = 'https://snyk.io/api/v1';
 const snykToken = process.env.SNYK_TOKEN;
@@ -168,7 +168,17 @@ async function generateGhIssues(project, issues) {
     const severities = Object.keys(sevMap).map(sev => capitalize(sev)).join(`/`);
     const batchProps = await getBatchProps(issues);
 
-    const title = `${getProjectName(project)} - ${issues.length} findings in ${batchProps.package} ${batchProps.version} (${severities})`;
+    // if there is a single vulnerability, just use that for the description
+    let description = `${issues[0].title}`;
+    if (issues.length > 1) {
+      // otherwise, if there are multiple vulnerabilities:
+      const titles = uniq(issues.map(x => x.title));
+      const vuln = titles.length === 1 ? ` ${titles[0]}` : '';
+      // if there are multiple of vulnerabilities of a single type, include the type in the description
+      // otherwise, if there are multiple types of vulnerabilities of a multiple types, leave that out of the description
+      description = `${issues.length}${vuln} findings`;
+    }
+    const title = `${getProjectName(project)} - ${description} in ${batchProps.package} ${batchProps.version} (${severities})`;
 
     const text = Object.keys(sevMap).map(sev => {
       const header = `# ${capitalize(sev)}-severity vulnerabilities`;
