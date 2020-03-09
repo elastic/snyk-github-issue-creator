@@ -123,10 +123,25 @@ async function createIssues() {
     if (autoGenerate) {
         if (batch) {
             console.log(chalk.grey(`Auto-generating a single GitHub issue for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
+            await generateGhIssues(project, issues);
         } else {
-            console.log(chalk.grey(`Auto-generating GitHub issues for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
+            console.log(chalk.grey(`Auto-generating ${issues.length} GitHub issue${issues.length > 1 ? 's' : ''}`));
+
+            // retrieve issue IDs already created in GitHub
+            const existingIssuesArray = await request({
+                method: 'get',
+                url: `${ghBaseUrl}/search/issues?q=repo%3A${args.ghOwner}/${args.ghRepo}+is%3Aissue+SNYKUID%3A+in%3Abody+label%3Asnyk&per_page=100`,
+                headers: {
+                    "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
+                    authorization: `token ${ghPat}`,
+                },
+                json: true,
+            });
+            const existingIssues = new Map(existingIssuesArray.items.map(existingIssue => ([existingIssue.title, existingIssue.number])));
+            // TODO handle cases when incomplete_results is true
+            // TODO pagination
+            await generateGhIssues(project, issues, existingIssues);
         }
-        await generateGhIssues(project, issues);
         return process.exit(0);
     }
 
@@ -173,12 +188,33 @@ function getGraph(project, issue, prefix) {
     return issue.from.map(paths => `${prefix}${getManifestName(project)} > ${paths.join(' > ')}`).join('\r\n');
 }
 
-async function generateGhIssues(project, issues) {
+// Must include Snyk id to distinguish between issues within the same component, that might have different mitigation
+// and/or exploitability
+function getIssueTitle(project, issue) {
+    return `${getProjectName(project)} - ${issue.title} in ${issue.package} ${issue.version} - ${issue.id}`;
+}
+
+function getIssueBody(project, issue) {
+    return `This issue has been created automatically by a source code scanner
+
+  ## Third party component with known security vulnerabilities
+
+  Introduced to ${getProjectName(project)} through:
+
+  ${getGraph(project, issue, '* ')}
+
+  ${issue.description}
+- [SNYKUID:${issue.id}](${issue.url})
+`;
+}
+
+async function generateGhIssues(project, issues, existingMap = new Map()) {
     const labels = (typeof args.ghLabels !== "undefined") ? args.ghLabels.split(",") : [];
     labels.push("snyk");
 
     const projectName = getProjectName(project);
-    let ghIssues = [];
+    let ghNewIssues = [];
+    let ghUpdatedIssues = [];
     if (batch && issues.length) {
         const sevMap = issues.reduce((acc, cur) => {
             acc[cur.severity] = (acc[cur.severity] || []).concat(cur);
@@ -214,7 +250,7 @@ ${issue.description}
             return header + body;
         }).join('\r\n\r\n');
 
-        ghIssues = [await request({
+        ghNewIssues = [await request({
             method: 'post',
             url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
             headers: {
@@ -233,7 +269,10 @@ ${text}`,
             json: true,
         })];
     } else {
-        ghIssues = await Promise.all(issues.map(issue => request({
+        const newIssues = issues.filter(issue => !existingMap.has(getIssueTitle(project, issue)));
+        const updateIssues = issues.filter(issue => existingMap.has(getIssueTitle(project, issue)));
+
+        ghNewIssues = await Promise.all(newIssues.map(issue => request({
             method: 'post',
             url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
             headers: {
@@ -241,34 +280,46 @@ ${text}`,
                 authorization: `token ${ghPat}`,
             },
             body: {
-                title: `${getProjectName(project)} - ${issue.title} in ${issue.package} ${issue.version}`,
-                body: `This issue has been created automatically by a source code scanner
-
-  SNYKUID:${issue.id}
-
-  ## Third party component with known security vulnerabilities
-
-  Introduced to ${projectName} through:
-
-  ${getGraph(project, issue, '* ')}
-
-  ${issue.description}
-  - [${issue.id}](${issue.url})
-`,
+                title: getIssueTitle(project, issue),
+                body: getIssueBody(project, issue),
                 labels
+            },
+            json: true,
+        })));
+
+        ghUpdatedIssues = await Promise.all(updateIssues.map(issue => request({
+            method: 'patch',
+            url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues/${existingMap.get(getIssueTitle(project, issue))}`,
+            headers: {
+                "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
+                authorization: `token ${ghPat}`,
+            },
+            body: {
+                body: getIssueBody(project, issue),
             },
             json: true,
         })));
     }
 
-    if (ghIssues.length === 0) {
-        return console.log(chalk.green('No GitHub issues were created'));
-    }
+    if ((ghNewIssues.length === 0) && (ghUpdatedIssues.length === 0)) {
+        console.log(chalk.green('No GitHub issues were created/updated'));
+    } else {
 
-    console.log(chalk.green('The following GitHub issues were created:'));
-    ghIssues.forEach(ghIssue => {
-        console.log(`- "${ghIssue.title}" ${ghIssue.url.replace('api.github.com/repos', 'github.com')}`);
-    });
+        if (ghUpdatedIssues.length !== 0) {
+            console.log(chalk.green('The following GitHub issues were updated:'));
+            ghUpdatedIssues.forEach(ghIssue => {
+                console.log(`- "${ghIssue.title}" ${ghIssue.url.replace('api.github.com/repos', 'github.com')}`);
+            });
+        }
+
+        if (ghNewIssues.length !== 0) {
+            console.log(chalk.green('The following GitHub issues were created:'));
+            ghNewIssues.forEach(ghIssue => {
+                console.log(`- "${ghIssue.title}" ${ghIssue.url.replace('api.github.com/repos', 'github.com')}`);
+            });
+        }
+
+    }
 }
 
 createIssues()
