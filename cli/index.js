@@ -5,6 +5,7 @@ const args = require('minimist')(process.argv.slice(2));
 const uuidValidate = require('uuid-validate');
 const request = require('request-promise-native');
 const chalk = require('chalk');
+const fs = require('fs');
 
 const {getBatchProps} = require('./batch');
 const {capitalize, compareText, uniq} = require('./utils');
@@ -15,30 +16,64 @@ const snykToken = process.env.SNYK_TOKEN;
 const ghBaseUrl = 'https://api.github.com';
 const ghPat = process.env.GH_PAT;
 
-const help = 'Usage: snyk-github-issue-creator --snykOrg=<snykOrg> --snykProject=<snykProject> ' +
+const help = 'Usage: snyk-github-issue-creator [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ] ' +
     '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
-    '--ghLabels=<ghLabel>,... --projectName=<projectName> --parseManifestName --batch --autoGenerate';
+    '[--ghLabels=<ghLabel>,...] [--projectName=<projectName>] [--parseManifestName] [--batch] [--autoGenerate]';
 
 if (args.help || args.h) {
     console.log(help);
     return process.exit(0);
 }
 
-const validators = {
-    snykOrg: id => !!id,
-    snykProject: uuidValidate,
+const ghValidators = {
     ghOwner: id => !!id,
     ghRepo: id => !!id,
 };
 
-const invalidArgs = Object.keys(validators).filter(key =>
-    !validators[key](args[key])
+const invalidGhArgs = Object.keys(ghValidators).filter(key =>
+    !ghValidators[key](args[key])
 );
 
-if (invalidArgs.length > 0) {
-    console.log(chalk.red(`Invalid args passed: ${invalidArgs.join(', ')}`));
+if (invalidGhArgs.length > 0) {
+    console.error(chalk.red(`Invalid args passed: ${invalidGhArgs.join(', ')}`));
     console.log(help);
     return process.exit(1);
+}
+
+
+const snykValidators = {
+    snykOrg: id => !!id,
+    snykProject: uuidValidate,
+};
+
+const invalidSnykArgs = Object.keys(snykValidators).filter(key =>
+    !snykValidators[key](args[key])
+);
+
+let snykOrg;
+let snykProject;
+
+if ( typeof args.stdin === 'undefined' ) {
+    if (invalidSnykArgs.length > 0) {
+        console.error(chalk.red(`Invalid args passed: ${invalidSnykArgs.join(', ')}`));
+        console.log(help);
+        return process.exit(1);
+    }
+    snykOrg = args.snykOrg;
+    snykProject = args.snykProject;
+} else {
+    const stdin = fs.readFileSync("/dev/stdin").toString();
+    stdin.split("\n").forEach((line) => {
+        const matched  = line.match(/^Explore this snapshot at https:\/\/app.snyk.io\/org\/([^\/]+)\/project\/([^\/]+)\/.*/);
+        if (matched && (matched.length ==3)) {
+            snykOrg = matched[1] ;
+            snykProject = matched[2];
+        }
+    });
+    if ( (typeof snykOrg === 'undefined') || !snykOrg || (typeof snykProject === 'undefined') || !snykProject  ) {
+        console.error("Could not parse required Snyk Org and Snyk Project from stdin.");
+        process.exit(1);
+    }
 }
 
 const autoGenerate = !!args.autoGenerate;
@@ -49,7 +84,7 @@ async function createIssues() {
 
     const projects = await request({
         method: 'get',
-        url: `${snykBaseUrl}/org/${args.snykOrg}/projects`,
+        url: `${snykBaseUrl}/org/${snykOrg}/projects`,
         headers: {
             authorization: `token ${snykToken}`,
         },
@@ -58,7 +93,7 @@ async function createIssues() {
 
     const projectIssues = await request({
         method: 'post',
-        url: `${snykBaseUrl}/org/${args.snykOrg}/project/${args.snykProject}/issues`,
+        url: `${snykBaseUrl}/org/${snykOrg}/project/${snykProject}/issues`,
         headers: {
             authorization: `token ${snykToken}`,
         },
@@ -73,7 +108,7 @@ async function createIssues() {
         json: true,
     });
 
-    const project = projects.projects.find(project => project.id === args.snykProject);
+    const project = projects.projects.find(project => project.id === snykProject);
 
     // sort issues in descending order of severity, then ascending order of title
     let issues = projectIssues.issues.vulnerabilities.sort((a, b) => compareText(a.severity, b.severity) || compareText(a.title, b.title));

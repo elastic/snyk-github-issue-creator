@@ -18,11 +18,12 @@ node ./cli/index.js --help
 ```
 
 ```bash
-node ./cli/index.js --snykOrg=<snykOrg> --snykProject=<snykProject> --ghOwner=<ghOwner> --ghRepo=<ghRepo> --ghLabels=<ghLabel>,... --projectName=<projectName> --parseManifestName --batch --autoGenerate
+node ./cli/index.js [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ] --ghOwner=<ghOwner> --ghRepo=<ghRepo> [--ghLabels=<ghLabel>,...] [--projectName=<projectName>] [--parseManifestName] [--batch] [--autoGenerate]
 ```
 
-- You can retrieve your orgId from your org settings page on [Snyk](https://snyk.io) or via the [Snyk API](https://snyk.docs.apiary.io/#reference/organisations/the-snyk-organisation-for-a-request/list-all-the-organisations-a-user-belongs-to).
-- The projectId is available via the [Snyk API](https://snyk.docs.apiary.io/#reference/projects/projects-by-organisation/list-all-projects).
+- You can retrieve your snykOrg Id from your org settings page on [Snyk](https://snyk.io) or via the [Snyk API](https://snyk.docs.apiary.io/#reference/organisations/the-snyk-organisation-for-a-request/list-all-the-organisations-a-user-belongs-to).
+- The SnykProject Id is available via the [Snyk API](https://snyk.docs.apiary.io/#reference/projects/projects-by-organisation/list-all-projects).
+- You need to either provide a valid SnykOrg Id and snykProject Id, or use the stdin option to parse the output of a snyk monitor command to retrieve the necessary parameters. 
 - The optional projetName allows to overrride the project name from Snyk (usefull when runing Snyk with CI/CLI integration)
 - If `parseManifestName` is specified, the dependency paths will start with the manifest name instead of the project name
 - If `batch` is specified, the selected findings will be combined into a single GitHub issue
