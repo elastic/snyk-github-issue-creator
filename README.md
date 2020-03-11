@@ -26,7 +26,7 @@ node ./cli/index.js [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ]
 - You need to either provide a valid `SnykOrg` Id and `snykProject` Id, or use the `stdin` option to parse the output of a snyk monitor command to retrieve the necessary parameters. 
 - The optional `projetName` allows to overrride the project name from Snyk (usefull when runing Snyk with CI/CLI integration)
 - If `parseManifestName` is specified, the dependency paths will start with the manifest name instead of the project name
-- If `batch` is specified, the selected findings will be combined into a single GitHub issue (see this [example](![screen shot of an issue created with batch mode](screenshot-issue-batch.png)))
+- If `batch` is specified, the selected findings will be combined into a single GitHub issue (see this [example](screenshot-issue-batch.png))
 
 You will be presented with a list of *high* and *medium* vulnerability issues to
 generate a GitHub issue for. Type `t` or `true` to create an issue,
