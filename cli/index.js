@@ -16,6 +16,11 @@ const snykToken = process.env.SNYK_TOKEN;
 const ghBaseUrl = 'https://api.github.com';
 const ghPat = process.env.GH_PAT;
 
+if ((!process.env.SNYK_TOKEN) || (!process.env.GH_PAT)) {
+    console.error(chalk.red("Make sure both SNYK_TOKEN and GH_PAT environment variables are set."));
+    return process.exit(1);
+}
+
 const help = 'Usage: snyk-github-issue-creator [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ] ' +
     '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
     '[--ghLabels=<ghLabel>,...] [--projectName=<projectName>] [--parseManifestName] [--batch] [--autoGenerate]';
@@ -53,7 +58,7 @@ const invalidSnykArgs = Object.keys(snykValidators).filter(key =>
 let snykOrg;
 let snykProject;
 
-if ( typeof args.stdin === 'undefined' ) {
+if (typeof args.stdin === 'undefined') {
     if (invalidSnykArgs.length > 0) {
         console.error(chalk.red(`Invalid args passed: ${invalidSnykArgs.join(', ')}`));
         console.log(help);
@@ -64,14 +69,14 @@ if ( typeof args.stdin === 'undefined' ) {
 } else {
     const stdin = fs.readFileSync("/dev/stdin").toString();
     stdin.split("\n").forEach((line) => {
-        const matched  = line.match(/^Explore this snapshot at https:\/\/app.snyk.io\/org\/([^\/]+)\/project\/([^\/]+)\/.*/);
-        if (matched && (matched.length ==3)) {
-            snykOrg = matched[1] ;
+        const matched = line.match(/^Explore this snapshot at https:\/\/app.snyk.io\/org\/([^\/]+)\/project\/([^\/]+)\/.*/);
+        if (matched && (matched.length == 3)) {
+            snykOrg = matched[1];
             snykProject = matched[2];
         }
     });
-    if ( (typeof snykOrg === 'undefined') || !snykOrg || (typeof snykProject === 'undefined') || !snykProject  ) {
-        console.error("Could not parse required Snyk Org and Snyk Project from stdin.");
+    if ((typeof snykOrg === 'undefined') || !snykOrg || (typeof snykProject === 'undefined') || !snykProject) {
+        console.error(chalk.red("Could not parse required Snyk Org and Snyk Project from stdin."));
         process.exit(1);
     }
 }
@@ -359,7 +364,7 @@ ${text}`,
 
 createIssues()
     .catch(err => {
-        console.error(err.stack);
+        console.error(chalk.red(err.stack));
         process.exit(1);
     })
 
