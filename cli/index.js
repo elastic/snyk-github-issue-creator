@@ -87,6 +87,29 @@ const batch = !!args.batch;
 async function createIssues() {
 
 
+    // Display confirmation when creating issues in public GitHub repo
+    const repo = await request({
+        method: 'get',
+        url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}`,
+        headers: {
+            "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
+            authorization: `token ${ghPat}`,
+        },
+        json: true,
+    });
+    if (!repo.private) {
+        const response = await prompt({
+            type: 'confirm',
+            name: 'question',
+            message: 'You are about to create issue(s) related to security vulnerabilities inside a public GitHub repo.' +
+                ' Are you sure you want to continue?',
+            default: false
+        });
+        if (!response.question) {
+            process.exit(0);
+        }
+    }
+    
     const projects = await request({
         method: 'get',
         url: `${snykBaseUrl}/org/${snykOrg}/projects`,
@@ -198,7 +221,6 @@ ${getGraph(project, issue, ' * ')}
         issueQuestions.push({
             type: 'confirm',
             name: `question-${ctr++}`,
-            type: 'confirm',
             message: batch ? `Add ${description} to batch?` : `Create GitHub issue for ${description}?`,
             default: false
         });
@@ -233,6 +255,7 @@ function getGraph(project, issue, prefix) {
 function getIssueTitle(project, issue) {
     return `${getProjectName(project)} - ${issue.title} in ${issue.package} ${issue.version} - ${issue.id}`;
 }
+
 
 function getIssueBody(project, issue) {
     return `This issue has been created automatically by a source code scanner
