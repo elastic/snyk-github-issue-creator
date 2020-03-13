@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+const {Octokit} = require("@octokit/rest");
+const {throttling} = require("@octokit/plugin-throttling");
 const {prompt} = require('enquirer');
 const args = require('minimist')(process.argv.slice(2));
 const uuidValidate = require('uuid-validate');
@@ -13,7 +15,6 @@ const {capitalize, compareText, uniq} = require('./utils');
 const snykBaseUrl = 'https://snyk.io/api/v1';
 const snykToken = process.env.SNYK_TOKEN;
 
-const ghBaseUrl = 'https://api.github.com';
 const ghPat = process.env.GH_PAT;
 
 if ((!process.env.SNYK_TOKEN) || (!process.env.GH_PAT)) {
@@ -83,21 +84,32 @@ if (typeof args.stdin === 'undefined') {
 
 const autoGenerate = !!args.autoGenerate;
 const batch = !!args.batch;
+const ThrottledOctokit = Octokit.plugin(throttling);
+const octokit = new ThrottledOctokit({
+    auth: ghPat,
+    userAgent: `${args.ghOwner} ${args.ghRepo}`,
+    throttle: {
+        onRateLimit: (retryAfter, options) => {
+            console.warn(chalk.yellow(`Request quota exhausted for request ${options.method} ${options.url}`));
+
+            if (options.request.retryCount === 0) { // only retries once
+                console.log(`Retrying after ${retryAfter} seconds!`)
+                return true
+            }
+        },
+        onAbuseLimit: (retryAfter, options) => {
+            // does not retry, only logs a warning
+            console.warn(chalk.yellow(`Abuse detected for request ${options.method} ${options.url}`));
+        }
+    }
+});
 
 async function createIssues() {
 
 
     // Display confirmation when creating issues in public GitHub repo
-    const repo = await request({
-        method: 'get',
-        url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}`,
-        headers: {
-            "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
-            authorization: `token ${ghPat}`,
-        },
-        json: true,
-    });
-    if (!repo.private) {
+    const repo = await octokit.repos.get({owner: args.ghOwner, repo: args.ghRepo});
+    if (!repo.data.private) {
         const response = await prompt({
             type: 'confirm',
             name: 'question',
@@ -109,7 +121,7 @@ async function createIssues() {
             process.exit(0);
         }
     }
-    
+
     const projects = await request({
         method: 'get',
         url: `${snykBaseUrl}/org/${snykOrg}/projects`,
@@ -147,22 +159,20 @@ async function createIssues() {
     }
 
     // create required Github issue labels if needed
-    await request({
-        simple: false,
-        method: 'post',
-        url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/labels`,
-        headers: {
-            "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
-            authorization: `token ${ghPat}`,
-        },
-        body: {
-            "name": "snyk",
-            "description": "Issue reported by Snyk Open Source scanner",
-            "color": "70389f"
-        },
-        json: true,
+    const resp = await octokit.issues.getLabel({
+        owner: args.ghOwner,
+        repo: args.ghRepo,
+        name: "snyk"
+    }).catch(async function (err) {
+        if (err.status === 404) {
+            await octokit.issues.createLabel({
+                owner: args.ghOwner, repo: args.ghRepo,
+                name: "snyk",
+                description: "Issue reported by Snyk Open Source scanner",
+                color: "70389f"
+            });
+        }
     });
-
 
     // combine separate issues that have the same ID with different dependency paths
     const reduced = issues.reduce((acc, cur) => {
@@ -188,22 +198,13 @@ async function createIssues() {
             console.log(chalk.grey(`Auto-generating a single GitHub issue for ${issues.length} issue${issues.length > 1 ? 's' : ''}`));
             await generateGhIssues(project, issues);
         } else {
-            console.log(chalk.grey(`Auto-generating ${issues.length} GitHub issue${issues.length > 1 ? 's' : ''}`));
+            console.log(chalk.grey(`Auto-generating ${issues.length} GitHub issue${issues.length > 1 ? 's' : ''}...`));
 
             // retrieve issue IDs already created in GitHub
-            const existingIssuesArray = await request({
-                method: 'get',
-                url: `${ghBaseUrl}/search/issues?q=repo%3A${args.ghOwner}/${args.ghRepo}+is%3Aissue+SNYKUID%3A+in%3Abody+label%3Asnyk&per_page=100`,
-                headers: {
-                    "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
-                    authorization: `token ${ghPat}`,
-                },
-                json: true,
-            });
-            const existingIssues = new Map(existingIssuesArray.items.map(existingIssue => ([existingIssue.title, existingIssue.number])));
-            // TODO handle cases when incomplete_results is true
-            // TODO pagination
-            await generateGhIssues(project, issues, existingIssues);
+            const existingIssues = await octokit.paginate(`GET /search/issues?q=repo%3A${args.ghOwner}/${args.ghRepo}+is%3Aissue+label%3Asnyk`,
+                response => response.data.map(existingIssue => ([existingIssue.title, existingIssue.number])));
+
+            await generateGhIssues(project, issues, new Map(existingIssues));
         }
         return process.exit(0);
     }
@@ -313,54 +314,34 @@ ${issue.description}
             return header + body;
         }).join('\r\n\r\n');
 
-        ghNewIssues = [await request({
-            method: 'post',
-            url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
-            headers: {
-                "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
-                authorization: `token ${ghPat}`,
-            },
-            body: {
-                title,
-                body: `This issue has been created automatically by a source code scanner.
+        ghNewIssues = [await octokit.issues.create({
+            owner: args.ghOwner,
+            repo: args.ghRepo,
+            title,
+            body: `This issue has been created automatically by a source code scanner.
 
 Snyk project: [\`${project.name}\`](${project.browseUrl}) (manifest version ${project.imageTag})
 
 ${text}`,
-                labels
-            },
-            json: true,
+            labels
         })];
     } else {
         const newIssues = issues.filter(issue => !existingMap.has(getIssueTitle(project, issue)));
         const updateIssues = issues.filter(issue => existingMap.has(getIssueTitle(project, issue)));
 
-        ghNewIssues = await Promise.all(newIssues.map(issue => request({
-            method: 'post',
-            url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues`,
-            headers: {
-                "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
-                authorization: `token ${ghPat}`,
-            },
-            body: {
-                title: getIssueTitle(project, issue),
-                body: getIssueBody(project, issue),
-                labels
-            },
-            json: true,
+        ghNewIssues = await Promise.all(newIssues.map(issue => octokit.issues.create({
+            owner: args.ghOwner,
+            repo: args.ghRepo,
+            title: getIssueTitle(project, issue),
+            body: getIssueBody(project, issue),
+            labels
         })));
 
-        ghUpdatedIssues = await Promise.all(updateIssues.map(issue => request({
-            method: 'patch',
-            url: `${ghBaseUrl}/repos/${args.ghOwner}/${args.ghRepo}/issues/${existingMap.get(getIssueTitle(project, issue))}`,
-            headers: {
-                "User-Agent": `${args.ghOwner} ${args.ghRepo}`,
-                authorization: `token ${ghPat}`,
-            },
-            body: {
-                body: getIssueBody(project, issue),
-            },
-            json: true,
+        ghUpdatedIssues = await Promise.all(updateIssues.map(issue => octokit.issues.update({
+            owner: args.ghOwner,
+            repo: args.ghRepo,
+            issue_number: existingMap.get(getIssueTitle(project, issue)),
+            body: getIssueBody(project, issue),
         })));
     }
 
@@ -371,14 +352,14 @@ ${text}`,
         if (ghUpdatedIssues.length !== 0) {
             console.log(chalk.green('The following GitHub issues were updated:'));
             ghUpdatedIssues.forEach(ghIssue => {
-                console.log(`- "${ghIssue.title}" ${ghIssue.url.replace('api.github.com/repos', 'github.com')}`);
+                console.log(`- "${ghIssue.data.title}" ${ghIssue.data.url.replace('api.github.com/repos', 'github.com')}`);
             });
         }
 
         if (ghNewIssues.length !== 0) {
             console.log(chalk.green('The following GitHub issues were created:'));
             ghNewIssues.forEach(ghIssue => {
-                console.log(`- "${ghIssue.title}" ${ghIssue.url.replace('api.github.com/repos', 'github.com')}`);
+                console.log(`- "${ghIssue.data.title}" ${ghIssue.data.url.replace('api.github.com/repos', 'github.com')}`);
             });
         }
 
