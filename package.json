@@ -10,7 +10,7 @@
     "snyk-github-issue-creator": "./cli/index.js"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=12"
   },
   "author": "pierre-ernst",
   "license": "ISC",

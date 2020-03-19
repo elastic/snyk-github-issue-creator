@@ -10,15 +10,22 @@ To use this tool you must first set:
 1. an environment variable `SNYK_TOKEN` with your API key, as found at https://app.snyk.io/account.
 1. an environment variable `GH_PAT` with a GitHub personal access token having enough privilege to create issues.
 
+## Installation
+```bash
+$ npm install
+$ chmod u+x ./cli/index.js
+$ npm link
+```
+
 ## Usage
 You can find usage instructions by running:
 
 ```bash
-node ./cli/index.js --help
+$ snyk-github-issue-creator --help
 ```
 
 ```bash
-node ./cli/index.js [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ] --ghOwner=<ghOwner> --ghRepo=<ghRepo> [--ghLabels=<ghLabel>,...] [--projectName=<projectName>] [--parseManifestName] [--batch] [--autoGenerate]
+$ snyk-github-issue-creator [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ] --ghOwner=<ghOwner> --ghRepo=<ghRepo> [--ghLabels=<ghLabel>,...] [--projectName=<projectName>] [--parseManifestName] [--batch] [--autoGenerate]
 ```
 
 - You can retrieve your snykOrg Id from your org settings page on [Snyk](https://snyk.io) or via the [Snyk API](https://snyk.docs.apiary.io/#reference/organisations/the-snyk-organisation-for-a-request/list-all-the-organisations-a-user-belongs-to).
@@ -38,10 +45,7 @@ If you wish to automatically generate GitHub issues and force the confirmation p
 
 ### Examples
 
-Running the script against this repository will create a set of [issues](https://github.com/pierre-ernst/snyk-github-issue-creator/issues)
-
-
-As seen here:
+Running the script against this repository will create a set of issues, as seen here:
 
 ![screen shot of a created issue](screenshot-issue-dogfooding.png)
 
