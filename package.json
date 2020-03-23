@@ -10,7 +10,7 @@
     "snyk-github-issue-creator": "./cli/index.js"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=10"
   },
   "author": "pierre-ernst",
   "license": "ISC",
@@ -20,6 +20,17 @@
     "minimist": "^1.2.0",
     "request": "^2.88.0",
     "request-promise-native": "^1.0.8",
-    "uuid-validate": "^0.0.3"
+    "uuid-validate": "^0.0.3",
+    "@octokit/rest": "^17.0.0",
+    "@octokit/plugin-throttling": "^3.2.0"
+    },
+ "devDependencies": {
+   "prettier": "2.0.1"
+ },
+ "prettier": {
+  "trailingComma": "es5",
+  "tabWidth": 4,
+  "semi": false,
+  "singleQuote": true
   }
 }
