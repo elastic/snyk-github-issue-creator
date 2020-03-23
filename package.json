@@ -1,36 +1,36 @@
 {
-  "name": "snyk-github-issue-creator",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "bin": {
-    "snyk-github-issue-creator": "./cli/index.js"
-  },
-  "engines": {
-    "node": ">=10"
-  },
-  "author": "pierre-ernst",
-  "license": "ISC",
-  "dependencies": {
-    "chalk": "^3.0.0",
-    "enquirer": "^2.3.4",
-    "minimist": "^1.2.0",
-    "request": "^2.88.0",
-    "request-promise-native": "^1.0.8",
-    "uuid-validate": "^0.0.3",
-    "@octokit/rest": "^17.0.0",
-    "@octokit/plugin-throttling": "^3.2.0"
+    "name": "snyk-github-issue-creator",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
- "devDependencies": {
-   "prettier": "2.0.1"
- },
- "prettier": {
-  "trailingComma": "es5",
-  "tabWidth": 4,
-  "semi": false,
-  "singleQuote": true
-  }
+    "bin": {
+        "snyk-github-issue-creator": "./cli/index.js"
+    },
+    "engines": {
+        "node": ">=10"
+    },
+    "author": "pierre-ernst",
+    "license": "ISC",
+    "dependencies": {
+        "chalk": "^3.0.0",
+        "enquirer": "^2.3.4",
+        "minimist": "^1.2.0",
+        "request": "^2.88.0",
+        "request-promise-native": "^1.0.8",
+        "uuid-validate": "^0.0.3",
+        "@octokit/rest": "^17.0.0",
+        "@octokit/plugin-throttling": "^3.2.0"
+    },
+    "devDependencies": {
+        "prettier": "2.0.1"
+    },
+    "prettier": {
+        "trailingComma": "es5",
+        "tabWidth": 4,
+        "semi": true,
+        "singleQuote": true
+    }
 }
