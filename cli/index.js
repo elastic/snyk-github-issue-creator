@@ -4,109 +4,30 @@ const { Octokit } = require('@octokit/rest');
 const { throttling } = require('@octokit/plugin-throttling');
 const { prompt } = require('enquirer');
 const args = require('minimist')(process.argv.slice(2));
-const uuidValidate = require('uuid-validate');
 const request = require('request-promise-native');
 const chalk = require('chalk');
-const fs = require('fs');
 
 const { getBatchProps } = require('./batch');
+const parseAndValidateInput = require('./input');
 const { capitalize, compareText, uniq } = require('./utils');
 
 const snykBaseUrl = 'https://snyk.io/api/v1';
-const snykToken = process.env.SNYK_TOKEN;
 
-const ghPat = process.env.GH_PAT;
-
-if (!process.env.SNYK_TOKEN || !process.env.GH_PAT) {
-    console.error(
-        chalk.red(
-            'Make sure both SNYK_TOKEN and GH_PAT environment variables are set.'
-        )
-    );
-    return process.exit(1);
-}
-
-const help =
-    'Usage: snyk-github-issue-creator [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ] ' +
-    '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
-    '[--ghLabels=<ghLabel>,...] [--projectName=<projectName>] [--parseManifestName] [--batch] [--autoGenerate]';
-
-if (args.help || args.h) {
-    console.log(help);
-    return process.exit(0);
-}
-
-const ghValidators = {
-    ghOwner: (id) => !!id,
-    ghRepo: (id) => !!id,
-};
-
-const invalidGhArgs = Object.keys(ghValidators).filter(
-    (key) => !ghValidators[key](args[key])
-);
-
-if (invalidGhArgs.length > 0) {
-    console.error(
-        chalk.red(`Invalid args passed: ${invalidGhArgs.join(', ')}`)
-    );
-    console.log(help);
-    return process.exit(1);
-}
-
-const snykValidators = {
-    snykOrg: (id) => !!id,
-    snykProject: uuidValidate,
-};
-
-const invalidSnykArgs = Object.keys(snykValidators).filter(
-    (key) => !snykValidators[key](args[key])
-);
-
-let snykOrg;
-let snykProject;
-
-if (typeof args.stdin === 'undefined') {
-    if (invalidSnykArgs.length > 0) {
-        console.error(
-            chalk.red(`Invalid args passed: ${invalidSnykArgs.join(', ')}`)
-        );
-        console.log(help);
-        return process.exit(1);
-    }
-    snykOrg = args.snykOrg;
-    snykProject = args.snykProject;
-} else {
-    const stdin = fs.readFileSync('/dev/stdin').toString();
-    stdin.split('\n').forEach((line) => {
-        const matched = line.match(
-            /^Explore this snapshot at https:\/\/app.snyk.io\/org\/([^\/]+)\/project\/([^\/]+)\/.*/
-        );
-        if (matched && matched.length == 3) {
-            snykOrg = matched[1];
-            snykProject = matched[2];
-        }
-    });
-    if (
-        typeof snykOrg === 'undefined' ||
-        !snykOrg ||
-        typeof snykProject === 'undefined' ||
-        !snykProject
-    ) {
-        console.error(
-            chalk.red(
-                'Could not parse required Snyk Org and Snyk Project from stdin.'
-            )
-        );
-        process.exit(1);
-    }
-}
-
+const {
+    snykToken,
+    ghPat,
+    ghOwner,
+    ghRepo,
+    snykOrg,
+    snykProject,
+} = parseAndValidateInput(args);
 const autoGenerate = !!args.autoGenerate;
 const batch = !!args.batch;
+
 const ThrottledOctokit = Octokit.plugin(throttling);
 const octokit = new ThrottledOctokit({
     auth: ghPat,
-    userAgent: `${args.ghOwner} ${args.ghRepo}`,
+    userAgent: `${ghOwner} ${ghRepo}`,
     throttle: {
         onRateLimit: (retryAfter, options) => {
             console.warn(
@@ -135,8 +56,8 @@ const octokit = new ThrottledOctokit({
 async function createIssues() {
     // Display confirmation when creating issues in public GitHub repo
     const repo = await octokit.repos.get({
-        owner: args.ghOwner,
-        repo: args.ghRepo,
+        owner: ghOwner,
+        repo: ghRepo,
     });
     if (!repo.data.private) {
         const response = await prompt({
@@ -196,15 +117,15 @@ async function createIssues() {
     // create required Github issue labels if needed
     const resp = await octokit.issues
         .getLabel({
-            owner: args.ghOwner,
-            repo: args.ghRepo,
+            owner: ghOwner,
+            repo: ghRepo,
             name: 'snyk',
         })
         .catch(async function (err) {
             if (err.status === 404) {
                 await octokit.issues.createLabel({
-                    owner: args.ghOwner,
-                    repo: args.ghRepo,
+                    owner: ghOwner,
+                    repo: ghRepo,
                     name: 'snyk',
                     description: 'Issue reported by Snyk Open Source scanner',
                     color: '70389f',
@@ -252,7 +173,7 @@ async function createIssues() {
 
             // retrieve issue IDs already created in GitHub
             const existingIssues = await octokit.paginate(
-                `GET /search/issues?q=repo%3A${args.ghOwner}/${args.ghRepo}+is%3Aissue+label%3Asnyk`,
+                `GET /search/issues?q=repo%3A${ghOwner}/${ghRepo}+is%3Aissue+label%3Asnyk`,
                 (response) =>
                     response.data.map((existingIssue) => [
                         existingIssue.title,
@@ -399,8 +320,8 @@ ${issue.description}
 
         ghNewIssues = [
             await octokit.issues.create({
-                owner: args.ghOwner,
-                repo: args.ghRepo,
+                owner: ghOwner,
+                repo: ghRepo,
                 title,
                 body: `This issue has been created automatically by a source code scanner.
 
@@ -421,8 +342,8 @@ ${text}`,
         ghNewIssues = await Promise.all(
             newIssues.map((issue) =>
                 octokit.issues.create({
-                    owner: args.ghOwner,
-                    repo: args.ghRepo,
+                    owner: ghOwner,
+                    repo: ghRepo,
                     title: getIssueTitle(project, issue),
                     body: getIssueBody(project, issue),
                     labels,
@@ -433,8 +354,8 @@ ${text}`,
         ghUpdatedIssues = await Promise.all(
             updateIssues.map((issue) =>
                 octokit.issues.update({
-                    owner: args.ghOwner,
-                    repo: args.ghRepo,
+                    owner: ghOwner,
+                    repo: ghRepo,
                     issue_number: existingMap.get(
                         getIssueTitle(project, issue)
                     ),
