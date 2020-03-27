@@ -1,6 +1,6 @@
 const { prompt } = require('enquirer');
 
-const { uniq } = require('./utils');
+const { capitalize, uniq, getProjectName, getGraph } = require('./utils');
 
 const getBatchProps = async (issues) => {
     const packageNames = uniq(issues.map((x) => x.package));
@@ -49,7 +49,64 @@ const getBatchVersion = (issues) => {
     return versions.length > 1 ? '(multiple versions)' : versions[0];
 };
 
+const getBatchIssue = async (project, issues) => {
+    const sevMap = issues.reduce((acc, cur) => {
+        acc[cur.severity] = (acc[cur.severity] || []).concat(cur);
+        return acc;
+    }, {});
+    const severities = Object.keys(sevMap)
+        .map((sev) => capitalize(sev))
+        .join(`/`);
+    const batchProps = await getBatchProps(issues);
+
+    // if there is a single vulnerability, just use that for the description
+    let description = `${issues[0].title}`;
+    if (issues.length > 1) {
+        // otherwise, if there are multiple vulnerabilities:
+        const titles = uniq(issues.map((x) => x.title));
+        const vuln = titles.length === 1 ? ` ${titles[0]}` : '';
+        // if there are multiple of vulnerabilities of a single type, include the type in the description
+        // otherwise, if there are multiple types of vulnerabilities of a multiple types, leave that out of the description
+        description = `${issues.length}${vuln} findings`;
+    }
+    const title = `${getProjectName(project)} - ${description} in ${
+        batchProps.package
+    } ${batchProps.version} (${severities})`;
+
+    const text = Object.keys(sevMap)
+        .map((sev) => {
+            const header = `# ${capitalize(sev)}-severity vulnerabilities`;
+            const body = sevMap[sev]
+                .map(
+                    (issue, i) =>
+                        `\r\n\r\n<details>
+<summary>${i + 1}. ${issue.title} in ${issue.package} ${issue.version} (${
+                            issue.id
+                        })</summary>
+
+## Detailed paths
+${getGraph(project, issue, '* ')}
+
+${issue.description}
+- [${issue.id}](${issue.url})
+</details>`
+                )
+                .join('');
+            return header + body;
+        })
+        .join('\r\n\r\n');
+
+    const body = `This issue has been created automatically by a source code scanner.
+
+Snyk project: [\`${project.name}\`](${project.browseUrl}) (manifest version ${project.imageTag})
+
+${text}`;
+
+    return { title, body };
+};
+
 module.exports = {
     getBatchProps,
     getBatchVersion,
+    getBatchIssue,
 };
