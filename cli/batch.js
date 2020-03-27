@@ -49,7 +49,7 @@ const getBatchVersion = (issues) => {
     return versions.length > 1 ? '(multiple versions)' : versions[0];
 };
 
-const getBatchIssue = async (project, issues) => {
+const getBatchIssue = async (issues) => {
     const sevMap = issues.reduce((acc, cur) => {
         acc[cur.severity] = (acc[cur.severity] || []).concat(cur);
         return acc;
@@ -69,11 +69,19 @@ const getBatchIssue = async (project, issues) => {
         // otherwise, if there are multiple types of vulnerabilities of a multiple types, leave that out of the description
         description = `${issues.length}${vuln} findings`;
     }
-    const title = `${getProjectName(project)} - ${description} in ${
+    const projects = uniq(issues.map((x) => x.project));
+    const title = `${getProjectName(projects)} - ${description} in ${
         batchProps.package
     } ${batchProps.version} (${severities})`;
 
-    const text = Object.keys(sevMap)
+    const headerText = `This issue has been created automatically by a source code scanner.\r\n\r\nSnyk project(s):`;
+    const projectText = projects
+        .map(
+            ({ name, browseUrl, imageTag }) =>
+                `\r\n * [\`${name}\`](${browseUrl}) (manifest version ${imageTag})`
+        )
+        .join('');
+    const sectionText = Object.keys(sevMap)
         .map((sev) => {
             const header = `# ${capitalize(sev)}-severity vulnerabilities`;
             const body = sevMap[sev]
@@ -85,22 +93,17 @@ const getBatchIssue = async (project, issues) => {
                         })</summary>
 
 ## Detailed paths
-${getGraph(project, issue, '* ')}
+${getGraph(issue, '* ')}
 
 ${issue.description}
 - [${issue.id}](${issue.url})
 </details>`
                 )
                 .join('');
-            return header + body;
+            return '\r\n\r\n' + header + body;
         })
-        .join('\r\n\r\n');
-
-    const body = `This issue has been created automatically by a source code scanner.
-
-Snyk project: [\`${project.name}\`](${project.browseUrl}) (manifest version ${project.imageTag})
-
-${text}`;
+        .join('');
+    const body = headerText + projectText + sectionText;
 
     return { title, body };
 };

@@ -97,14 +97,14 @@ async function createIssues() {
             },
         },
         json: true,
+    }).then((response) => {
+        // only return vulnerabilities; add the project to each vulnerability object
+        const project = projects.projects.find((x) => x.id === snykProject);
+        return response.issues.vulnerabilities.map((x) => ({ ...x, project }));
     });
 
-    const project = projects.projects.find(
-        (project) => project.id === snykProject
-    );
-
     // sort issues in descending order of severity, then ascending order of title
-    let issues = projectIssues.issues.vulnerabilities.sort(
+    let issues = projectIssues.sort(
         (a, b) =>
             compareText(a.severity, b.severity) || compareText(a.title, b.title)
     );
@@ -133,15 +133,13 @@ async function createIssues() {
             }
         });
 
-    // combine separate issues that have the same ID with different dependency paths
     const reduced = issues.reduce((acc, cur) => {
-        let found = acc[cur.id];
-        if (found) {
-            found.from.push(cur.from);
-        } else {
-            cur.from = [cur.from]; // wrap this issue's "from" in an array
-            acc[cur.id] = cur;
+        const { id, from: paths, project } = cur;
+        if (!acc[id]) {
+            cur.from = [];
+            acc[id] = cur;
         }
+        acc[id].from.push({ project, paths });
         return acc;
     }, {});
     issues = Object.values(reduced);
@@ -161,7 +159,7 @@ async function createIssues() {
                     } issue${issues.length > 1 ? 's' : ''}`
                 )
             );
-            await generateGhIssues(project, issues);
+            await generateGhIssues(issues);
         } else {
             console.log(
                 chalk.grey(
@@ -181,7 +179,7 @@ async function createIssues() {
                     ])
             );
 
-            await generateGhIssues(project, issues, new Map(existingIssues));
+            await generateGhIssues(issues, new Map(existingIssues));
         }
         return process.exit(0);
     }
@@ -195,7 +193,7 @@ async function createIssues() {
             issue.title
         }`;
         console.log(`${description} - ${issue.id} (${issue.severity})
-${getGraph(project, issue, ' * ')}
+${getGraph(issue, ' * ')}
 `);
         issueQuestions.push({
             type: 'confirm',
@@ -213,34 +211,35 @@ ${getGraph(project, issue, ' * ')}
         (_issue, i) => issueAnswers[`question-${i}`]
     );
 
-    await generateGhIssues(project, issuesToAction);
+    await generateGhIssues(issuesToAction);
 
     process.exit(0);
 }
 
 // Must include Snyk id to distinguish between issues within the same component, that might have different mitigation
 // and/or exploitability
-function getIssueTitle(project, issue) {
-    return `${getProjectName(project)} - ${issue.title} in ${issue.package} ${
-        issue.version
-    } - ${issue.id}`;
+function getIssueTitle(issue) {
+    const { project, title, package, version, id } = issue;
+    const projectName = getProjectName(project);
+    return `${projectName} - ${title} in ${package} ${version} - ${id}`;
 }
 
-function getIssueBody(project, issue) {
+function getIssueBody(issue) {
+    const { project, description, id, url } = issue;
     return `This issue has been created automatically by a source code scanner
 
 ## Third party component with known security vulnerabilities
 
 Introduced to ${getProjectName(project)} through:
 
-${getGraph(project, issue, '* ')}
+${getGraph(issue, '* ')}
 
-${issue.description}
-- [SNYKUID:${issue.id}](${issue.url})
+${description}
+- [SNYKUID:${id}](${url})
 `;
 }
 
-async function generateGhIssues(project, issues, existingMap = new Map()) {
+async function generateGhIssues(issues, existingMap = new Map()) {
     const labels =
         typeof args.ghLabels !== 'undefined' ? args.ghLabels.split(',') : [];
     labels.push('snyk');
@@ -248,7 +247,7 @@ async function generateGhIssues(project, issues, existingMap = new Map()) {
     let ghNewIssues = [];
     let ghUpdatedIssues = [];
     if (batch && issues.length) {
-        const { title, body } = await getBatchIssue(project, issues);
+        const { title, body } = await getBatchIssue(issues);
 
         ghNewIssues = [
             await octokit.issues.create({
@@ -261,10 +260,10 @@ async function generateGhIssues(project, issues, existingMap = new Map()) {
         ];
     } else {
         const newIssues = issues.filter(
-            (issue) => !existingMap.has(getIssueTitle(project, issue))
+            (issue) => !existingMap.has(getIssueTitle(issue))
         );
         const updateIssues = issues.filter((issue) =>
-            existingMap.has(getIssueTitle(project, issue))
+            existingMap.has(getIssueTitle(issue))
         );
 
         ghNewIssues = await Promise.all(
@@ -272,8 +271,8 @@ async function generateGhIssues(project, issues, existingMap = new Map()) {
                 octokit.issues.create({
                     owner: ghOwner,
                     repo: ghRepo,
-                    title: getIssueTitle(project, issue),
-                    body: getIssueBody(project, issue),
+                    title: getIssueTitle(issue),
+                    body: getIssueBody(issue),
                     labels,
                 })
             )
@@ -285,9 +284,9 @@ async function generateGhIssues(project, issues, existingMap = new Map()) {
                     owner: ghOwner,
                     repo: ghRepo,
                     issue_number: existingMap.get(
-                        getIssueTitle(project, issue)
+                        getIssueTitle(issue)
                     ),
-                    body: getIssueBody(project, issue),
+                    body: getIssueBody(issue),
                 })
             )
         );

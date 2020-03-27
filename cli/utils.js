@@ -18,10 +18,14 @@ const capitalize = (s) => {
 
 const uniq = (array) => [...new Set(array)];
 
-const getProjectName = (project) => {
-    return typeof args.projectName !== 'undefined'
-        ? args.projectName
-        : project.name;
+const getProjectName = (projectOrProjects) => {
+    if (args.projectName) {
+        return args.projectName;
+    } else if (Array.isArray(projectOrProjects)) {
+        return `${projectOrProjects.length} projects`;
+    }
+    // single project
+    return projectOrProjects.name;
 };
 
 const getManifestName = (project) => {
@@ -31,10 +35,10 @@ const getManifestName = (project) => {
     return getProjectName(project);
 };
 
-const getGraph = (project, issue, prefix) => {
+const getGraph = (issue, prefix) => {
     return issue.from
         .map(
-            (paths) =>
+            ({ project, paths }) =>
                 `${prefix}${getManifestName(project)} > ${paths.join(' > ')}`
         )
         .join('\r\n');
