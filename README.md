@@ -38,6 +38,7 @@ $ snyk-github-issue-creator [--snykOrg=<snykOrg> --snykProject=<snykProject> | -
 -   The optional `projectName` allows to overrride the project name from Snyk (useful when runing Snyk with CI/CLI integration)
 -   If `parseManifestName` is specified, the dependency paths will start with the manifest name instead of the project name
 -   If `batch` is specified, the selected findings will be combined into a single GitHub issue (see this [example](screenshot-issue-batch.png))
+-   If `severityLabel` is specified, the GitHub issue will have severity label(s) added
 
 You will be presented with a list of _high_ and _medium_ vulnerability issues to
 generate a GitHub issue for. Type `t` or `true` to create an issue,

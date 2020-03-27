@@ -63,9 +63,6 @@ const getBatchIssue = async (issues) => {
         acc[cur.severity] = (acc[cur.severity] || []).concat(cur);
         return acc;
     }, {});
-    const severities = Object.keys(sevMap)
-        .map((sev) => capitalize(sev))
-        .join(`/`);
     const batchProps = await getBatchProps(issues);
 
     // if there is a single vulnerability, just use that for the description
@@ -81,7 +78,7 @@ const getBatchIssue = async (issues) => {
     const projects = getProjects(issues);
     const title = `${getProjectName(projects)} - ${description} in ${
         batchProps.package
-    } ${batchProps.version} (${severities})`;
+    } ${batchProps.version}`;
 
     const headerText = `This issue has been created automatically by a source code scanner.\r\n\r\nSnyk project(s):`;
     const projectText = projects

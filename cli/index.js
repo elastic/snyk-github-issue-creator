@@ -10,6 +10,7 @@ const flatten = require('lodash.flatten');
 
 const { getBatchProps, getBatchIssue } = require('./batch');
 const parseAndValidateInput = require('./input');
+const { getLabels, ensureLabelsAreCreated } = require('./labels');
 const { compare, getProjectName, getGraph, uniq } = require('./utils');
 
 const snykBaseUrl = 'https://snyk.io/api/v1';
@@ -128,25 +129,6 @@ async function createIssues() {
         return process.exit(0);
     }
 
-    // create required Github issue labels if needed
-    const resp = await octokit.issues
-        .getLabel({
-            owner: ghOwner,
-            repo: ghRepo,
-            name: 'snyk',
-        })
-        .catch(async function (err) {
-            if (err.status === 404) {
-                await octokit.issues.createLabel({
-                    owner: ghOwner,
-                    repo: ghRepo,
-                    name: 'snyk',
-                    description: 'Issue reported by Snyk Open Source scanner',
-                    color: '70389f',
-                });
-            }
-        });
-
     const reduced = issues.reduce((acc, cur) => {
         const { id, from: paths, project, version } = cur;
         const key = `${id}/${version}`;
@@ -258,6 +240,8 @@ ${description}
 }
 
 async function generateGhIssues(issues, existingMap = new Map()) {
+    await ensureLabelsAreCreated(octokit, ghOwner, ghRepo, issues);
+
     const labels =
         typeof args.ghLabels !== 'undefined' ? args.ghLabels.split(',') : [];
     labels.push('snyk');
@@ -273,7 +257,7 @@ async function generateGhIssues(issues, existingMap = new Map()) {
                 repo: ghRepo,
                 title,
                 body,
-                labels,
+                labels: getLabels(issues),
             }),
         ];
     } else {
@@ -291,7 +275,7 @@ async function generateGhIssues(issues, existingMap = new Map()) {
                     repo: ghRepo,
                     title: getIssueTitle(issue),
                     body: getIssueBody(issue),
-                    labels,
+                    labels: getLabels(issue),
                 })
             )
         );
