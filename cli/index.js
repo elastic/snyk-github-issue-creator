@@ -331,13 +331,13 @@ function getIssueTitle(project, issue) {
 function getIssueBody(project, issue) {
     return `This issue has been created automatically by a source code scanner
 
-  ## Third party component with known security vulnerabilities
+## Third party component with known security vulnerabilities
 
-  Introduced to ${getProjectName(project)} through:
+Introduced to ${getProjectName(project)} through:
 
-  ${getGraph(project, issue, '* ')}
+${getGraph(project, issue, '* ')}
 
-  ${issue.description}
+${issue.description}
 - [SNYKUID:${issue.id}](${issue.url})
 `;
 }
