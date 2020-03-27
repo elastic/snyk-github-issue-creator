@@ -1,15 +1,15 @@
 const args = require('minimist')(process.argv.slice(2));
+const semver = require('semver');
 
-const compareText = (a, b) => {
-    const _a = a.toLowerCase();
-    const _b = b.toLowerCase();
-    if (_a < _b) {
-        return -1;
-    } else if (_a > _b) {
-        return 1;
-    }
-    return 0;
-};
+// ascending order
+const compareText = (a, b) => a.toLowerCase().localeCompare(b.toLowerCase());
+
+// descending order
+const compareVersions = (a, b) =>
+    semver.lt(a, b) ? 1 : semver.gt(a, b) ? -1 : 0;
+
+// ascending order
+const compareArrays = (a, b) => compareText(a.join(), b.join());
 
 const capitalize = (s) => {
     if (typeof s !== 'string') return '';
@@ -46,7 +46,11 @@ const getGraph = (issue, prefix) => {
 
 module.exports = {
     capitalize,
-    compareText,
+    compare: {
+        text: compareText,
+        versions: compareVersions,
+        arrays: compareArrays,
+    },
     uniq,
     getProjectName,
     getGraph,

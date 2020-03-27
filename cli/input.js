@@ -29,7 +29,7 @@ const parseAndValidateInput = (args) => {
     const ghOwner = parseArgument('ghOwner');
     const ghRepo = parseArgument('ghRepo');
     let snykOrg;
-    let snykProject;
+    let snykProjects;
 
     // snykOrg and snykProject either come from stdin, or from separate CLI arguments
     if (args.stdin) {
@@ -40,14 +40,14 @@ const parseAndValidateInput = (args) => {
             );
             if (matched && matched.length == 3) {
                 snykOrg = matched[1];
-                snykProject = matched[2];
+                snykProjects = [matched[2]];
             }
         });
         if (
             typeof snykOrg === 'undefined' ||
             !snykOrg ||
-            typeof snykProject === 'undefined' ||
-            !snykProject
+            typeof snykProjects[0] === 'undefined' ||
+            !snykProjects[0]
         ) {
             console.error(
                 chalk.red(
@@ -59,10 +59,12 @@ const parseAndValidateInput = (args) => {
     } else {
         const errSuffix = 'if the "stdin" argument is not used';
         snykOrg = parseArgument('snykOrg', { errSuffix });
-        snykProject = args.snykProject;
-        if (!uuidValidate(snykProject)) {
+        snykProjects =
+            args.snykProject &&
+            args.snykProject.split(' ').filter((x) => uuidValidate(x));
+        if (!snykProjects || !snykProjects.length) {
             errors.push(
-                `"snykProject" argument must be a valid UUID ${errSuffix}`
+                `"snykProject" argument must be one or more valid UUIDs (separated by spaces) ${errSuffix}`
             );
         }
     }
@@ -76,7 +78,7 @@ const parseAndValidateInput = (args) => {
         return process.exit(1);
     }
 
-    return { snykToken, ghPat, ghOwner, ghRepo, snykOrg, snykProject };
+    return { snykToken, ghPat, ghOwner, ghRepo, snykOrg, snykProjects };
 };
 
 module.exports = parseAndValidateInput;

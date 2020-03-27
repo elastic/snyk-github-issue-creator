@@ -6,10 +6,11 @@ const { prompt } = require('enquirer');
 const args = require('minimist')(process.argv.slice(2));
 const request = require('request-promise-native');
 const chalk = require('chalk');
+const flatten = require('lodash.flatten');
 
 const { getBatchProps, getBatchIssue } = require('./batch');
 const parseAndValidateInput = require('./input');
-const { compareText, getProjectName, getGraph } = require('./utils');
+const { compare, getProjectName, getGraph, uniq } = require('./utils');
 
 const snykBaseUrl = 'https://snyk.io/api/v1';
 
@@ -19,7 +20,7 @@ const {
     ghOwner,
     ghRepo,
     snykOrg,
-    snykProject,
+    snykProjects,
 } = parseAndValidateInput(args);
 const autoGenerate = !!args.autoGenerate;
 const batch = !!args.batch;
@@ -82,31 +83,44 @@ async function createIssues() {
         json: true,
     });
 
-    const projectIssues = await request({
-        method: 'post',
-        url: `${snykBaseUrl}/org/${snykOrg}/project/${snykProject}/issues`,
-        headers: {
-            authorization: `token ${snykToken}`,
-        },
-        body: {
-            filters: {
-                severities: ['high', 'medium'],
-                types: ['vuln'],
-                ignored: false,
-                patched: false,
-            },
-        },
-        json: true,
-    }).then((response) => {
-        // only return vulnerabilities; add the project to each vulnerability object
-        const project = projects.projects.find((x) => x.id === snykProject);
-        return response.issues.vulnerabilities.map((x) => ({ ...x, project }));
-    });
+    const projectIssues = await Promise.all(
+        snykProjects.map((snykProject) =>
+            request({
+                method: 'post',
+                url: `${snykBaseUrl}/org/${snykOrg}/project/${snykProject}/issues`,
+                headers: {
+                    authorization: `token ${snykToken}`,
+                },
+                body: {
+                    filters: {
+                        severities: ['high', 'medium'],
+                        types: ['vuln'],
+                        ignored: false,
+                        patched: false,
+                    },
+                },
+                json: true,
+            }).then((response) => {
+                // only return vulnerabilities; add the project to each vulnerability object
+                const project = projects.projects.find(
+                    (x) => x.id === snykProject
+                );
+                return response.issues.vulnerabilities.map((x) => ({
+                    ...x,
+                    project,
+                }));
+            })
+        )
+    );
 
-    // sort issues in descending order of severity, then ascending order of title
-    let issues = projectIssues.sort(
+    let issues = flatten(projectIssues).sort(
         (a, b) =>
-            compareText(a.severity, b.severity) || compareText(a.title, b.title)
+            compare.text(a.severity, b.severity) || // descending severity (High, then Medium)
+            compare.text(a.package, b.package) || // ascending package name
+            compare.versions(a.version, b.version) || // descending package version
+            compare.text(a.title, b.title) || // ascending vulnerability title
+            compare.text(a.project.name, b.project.name) || // ascending project name
+            compare.arrays(a.from, b.from) // ascending paths
     );
 
     if (issues.length === 0) {
@@ -134,12 +148,16 @@ async function createIssues() {
         });
 
     const reduced = issues.reduce((acc, cur) => {
-        const { id, from: paths, project } = cur;
-        if (!acc[id]) {
+        const { id, from: paths, project, version } = cur;
+        const key = `${id}/${version}`;
+        if (!acc[key]) {
             cur.from = [];
-            acc[id] = cur;
+            cur.projects = [];
+            delete cur.project;
+            acc[key] = cur;
         }
-        acc[id].from.push({ project, paths });
+        acc[key].from.push({ project, paths });
+        acc[key].projects = uniq(acc[key].projects.concat([project]));
         return acc;
     }, {});
     issues = Object.values(reduced);
@@ -219,18 +237,18 @@ ${getGraph(issue, ' * ')}
 // Must include Snyk id to distinguish between issues within the same component, that might have different mitigation
 // and/or exploitability
 function getIssueTitle(issue) {
-    const { project, title, package, version, id } = issue;
-    const projectName = getProjectName(project);
+    const { projects, title, package, version, id } = issue;
+    const projectName = getProjectName(projects);
     return `${projectName} - ${title} in ${package} ${version} - ${id}`;
 }
 
 function getIssueBody(issue) {
-    const { project, description, id, url } = issue;
+    const { projects, description, id, url } = issue;
     return `This issue has been created automatically by a source code scanner
 
 ## Third party component with known security vulnerabilities
 
-Introduced to ${getProjectName(project)} through:
+Introduced to ${getProjectName(projects)} through:
 
 ${getGraph(issue, '* ')}
 
@@ -283,9 +301,7 @@ async function generateGhIssues(issues, existingMap = new Map()) {
                 octokit.issues.update({
                     owner: ghOwner,
                     repo: ghRepo,
-                    issue_number: existingMap.get(
-                        getIssueTitle(issue)
-                    ),
+                    issue_number: existingMap.get(getIssueTitle(issue)),
                     body: getIssueBody(issue),
                 })
             )
