@@ -4,109 +4,32 @@ const { Octokit } = require('@octokit/rest');
 const { throttling } = require('@octokit/plugin-throttling');
 const { prompt } = require('enquirer');
 const args = require('minimist')(process.argv.slice(2));
-const uuidValidate = require('uuid-validate');
 const request = require('request-promise-native');
 const chalk = require('chalk');
-const fs = require('fs');
+const flatten = require('lodash.flatten');
 
-const { getBatchProps } = require('./batch');
-const { capitalize, compareText, uniq } = require('./utils');
+const { getBatchProps, getBatchIssue } = require('./batch');
+const parseAndValidateInput = require('./input');
+const { getLabels, ensureLabelsAreCreated } = require('./labels');
+const { compare, getProjectName, getGraph, uniq } = require('./utils');
 
 const snykBaseUrl = 'https://snyk.io/api/v1';
-const snykToken = process.env.SNYK_TOKEN;
 
-const ghPat = process.env.GH_PAT;
-
-if (!process.env.SNYK_TOKEN || !process.env.GH_PAT) {
-    console.error(
-        chalk.red(
-            'Make sure both SNYK_TOKEN and GH_PAT environment variables are set.'
-        )
-    );
-    return process.exit(1);
-}
-
-const help =
-    'Usage: snyk-github-issue-creator [--snykOrg=<snykOrg> --snykProject=<snykProject> | --stdin ] ' +
-    '--ghOwner=<ghOwner> --ghRepo=<ghRepo> ' +
-    '[--ghLabels=<ghLabel>,...] [--projectName=<projectName>] [--parseManifestName] [--batch] [--autoGenerate]';
-
-if (args.help || args.h) {
-    console.log(help);
-    return process.exit(0);
-}
-
-const ghValidators = {
-    ghOwner: (id) => !!id,
-    ghRepo: (id) => !!id,
-};
-
-const invalidGhArgs = Object.keys(ghValidators).filter(
-    (key) => !ghValidators[key](args[key])
-);
-
-if (invalidGhArgs.length > 0) {
-    console.error(
-        chalk.red(`Invalid args passed: ${invalidGhArgs.join(', ')}`)
-    );
-    console.log(help);
-    return process.exit(1);
-}
-
-const snykValidators = {
-    snykOrg: (id) => !!id,
-    snykProject: uuidValidate,
-};
-
-const invalidSnykArgs = Object.keys(snykValidators).filter(
-    (key) => !snykValidators[key](args[key])
-);
-
-let snykOrg;
-let snykProject;
-
-if (typeof args.stdin === 'undefined') {
-    if (invalidSnykArgs.length > 0) {
-        console.error(
-            chalk.red(`Invalid args passed: ${invalidSnykArgs.join(', ')}`)
-        );
-        console.log(help);
-        return process.exit(1);
-    }
-    snykOrg = args.snykOrg;
-    snykProject = args.snykProject;
-} else {
-    const stdin = fs.readFileSync('/dev/stdin').toString();
-    stdin.split('\n').forEach((line) => {
-        const matched = line.match(
-            /^Explore this snapshot at https:\/\/app.snyk.io\/org\/([^\/]+)\/project\/([^\/]+)\/.*/
-        );
-        if (matched && matched.length == 3) {
-            snykOrg = matched[1];
-            snykProject = matched[2];
-        }
-    });
-    if (
-        typeof snykOrg === 'undefined' ||
-        !snykOrg ||
-        typeof snykProject === 'undefined' ||
-        !snykProject
-    ) {
-        console.error(
-            chalk.red(
-                'Could not parse required Snyk Org and Snyk Project from stdin.'
-            )
-        );
-        process.exit(1);
-    }
-}
-
+const {
+    snykToken,
+    ghPat,
+    ghOwner,
+    ghRepo,
+    snykOrg,
+    snykProjects,
+} = parseAndValidateInput(args);
 const autoGenerate = !!args.autoGenerate;
 const batch = !!args.batch;
+
 const ThrottledOctokit = Octokit.plugin(throttling);
 const octokit = new ThrottledOctokit({
     auth: ghPat,
-    userAgent: `${args.ghOwner} ${args.ghRepo}`,
+    userAgent: `${ghOwner} ${ghRepo}`,
     throttle: {
         onRateLimit: (retryAfter, options) => {
             console.warn(
@@ -135,8 +58,8 @@ const octokit = new ThrottledOctokit({
 async function createIssues() {
     // Display confirmation when creating issues in public GitHub repo
     const repo = await octokit.repos.get({
-        owner: args.ghOwner,
-        repo: args.ghRepo,
+        owner: ghOwner,
+        repo: ghRepo,
     });
     if (!repo.data.private) {
         const response = await prompt({
@@ -161,31 +84,44 @@ async function createIssues() {
         json: true,
     });
 
-    const projectIssues = await request({
-        method: 'post',
-        url: `${snykBaseUrl}/org/${snykOrg}/project/${snykProject}/issues`,
-        headers: {
-            authorization: `token ${snykToken}`,
-        },
-        body: {
-            filters: {
-                severities: ['high', 'medium'],
-                types: ['vuln'],
-                ignored: false,
-                patched: false,
-            },
-        },
-        json: true,
-    });
-
-    const project = projects.projects.find(
-        (project) => project.id === snykProject
+    const projectIssues = await Promise.all(
+        snykProjects.map((snykProject) =>
+            request({
+                method: 'post',
+                url: `${snykBaseUrl}/org/${snykOrg}/project/${snykProject}/issues`,
+                headers: {
+                    authorization: `token ${snykToken}`,
+                },
+                body: {
+                    filters: {
+                        severities: ['high', 'medium'],
+                        types: ['vuln'],
+                        ignored: false,
+                        patched: false,
+                    },
+                },
+                json: true,
+            }).then((response) => {
+                // only return vulnerabilities; add the project to each vulnerability object
+                const project = projects.projects.find(
+                    (x) => x.id === snykProject
+                );
+                return response.issues.vulnerabilities.map((x) => ({
+                    ...x,
+                    project,
+                }));
+            })
+        )
     );
 
-    // sort issues in descending order of severity, then ascending order of title
-    let issues = projectIssues.issues.vulnerabilities.sort(
+    let issues = flatten(projectIssues).sort(
         (a, b) =>
-            compareText(a.severity, b.severity) || compareText(a.title, b.title)
+            compare.text(a.severity, b.severity) || // descending severity (High, then Medium)
+            compare.text(a.package, b.package) || // ascending package name
+            compare.versions(a.version, b.version) || // descending package version
+            compare.text(a.title, b.title) || // ascending vulnerability title
+            compare.text(a.project.name, b.project.name) || // ascending project name
+            compare.arrays(a.from, b.from) // ascending paths
     );
 
     if (issues.length === 0) {
@@ -193,34 +129,17 @@ async function createIssues() {
         return process.exit(0);
     }
 
-    // create required Github issue labels if needed
-    const resp = await octokit.issues
-        .getLabel({
-            owner: args.ghOwner,
-            repo: args.ghRepo,
-            name: 'snyk',
-        })
-        .catch(async function (err) {
-            if (err.status === 404) {
-                await octokit.issues.createLabel({
-                    owner: args.ghOwner,
-                    repo: args.ghRepo,
-                    name: 'snyk',
-                    description: 'Issue reported by Snyk Open Source scanner',
-                    color: '70389f',
-                });
-            }
-        });
-
-    // combine separate issues that have the same ID with different dependency paths
     const reduced = issues.reduce((acc, cur) => {
-        let found = acc[cur.id];
-        if (found) {
-            found.from.push(cur.from);
-        } else {
-            cur.from = [cur.from]; // wrap this issue's "from" in an array
-            acc[cur.id] = cur;
+        const { id, from: paths, project, version } = cur;
+        const key = `${id}/${version}`;
+        if (!acc[key]) {
+            cur.from = [];
+            cur.projects = [];
+            delete cur.project;
+            acc[key] = cur;
         }
+        acc[key].from.push({ project, paths });
+        acc[key].projects = uniq(acc[key].projects.concat([project]));
         return acc;
     }, {});
     issues = Object.values(reduced);
@@ -240,7 +159,7 @@ async function createIssues() {
                     } issue${issues.length > 1 ? 's' : ''}`
                 )
             );
-            await generateGhIssues(project, issues);
+            await generateGhIssues(issues);
         } else {
             console.log(
                 chalk.grey(
@@ -252,7 +171,7 @@ async function createIssues() {
 
             // retrieve issue IDs already created in GitHub
             const existingIssues = await octokit.paginate(
-                `GET /search/issues?q=repo%3A${args.ghOwner}/${args.ghRepo}+is%3Aissue+label%3Asnyk`,
+                `GET /search/issues?q=repo%3A${ghOwner}/${ghRepo}+is%3Aissue+label%3Asnyk`,
                 (response) =>
                     response.data.map((existingIssue) => [
                         existingIssue.title,
@@ -260,7 +179,7 @@ async function createIssues() {
                     ])
             );
 
-            await generateGhIssues(project, issues, new Map(existingIssues));
+            await generateGhIssues(issues, new Map(existingIssues));
         }
         return process.exit(0);
     }
@@ -268,14 +187,13 @@ async function createIssues() {
     const issueQuestions = [];
 
     let ctr = 0;
-    console.log(`Found ${issues.length} vulnerabilities:
-`);
+    console.log(`Found ${issues.length} vulnerabilities:\n`);
     issues.forEach((issue, i) => {
         const description = `${i + 1}. ${issue.package} ${issue.version} - ${
             issue.title
         }`;
         console.log(`${description} - ${issue.id} (${issue.severity})
-${getGraph(project, issue, ' * ')}
+${getGraph(issue, ' * ')}
 `);
         issueQuestions.push({
             type: 'confirm',
@@ -293,139 +211,71 @@ ${getGraph(project, issue, ' * ')}
         (_issue, i) => issueAnswers[`question-${i}`]
     );
 
-    await generateGhIssues(project, issuesToAction);
+    await generateGhIssues(issuesToAction);
 
     process.exit(0);
 }
 
-function getProjectName(project) {
-    return typeof args.projectName !== 'undefined'
-        ? args.projectName
-        : project.name;
-}
-
-function getManifestName(project) {
-    if (args.parseManifestName) {
-        return project.name.substring(project.name.indexOf(':') + 1);
-    }
-    return getProjectName(project);
-}
-
-function getGraph(project, issue, prefix) {
-    return issue.from
-        .map(
-            (paths) =>
-                `${prefix}${getManifestName(project)} > ${paths.join(' > ')}`
-        )
-        .join('\r\n');
-}
-
 // Must include Snyk id to distinguish between issues within the same component, that might have different mitigation
 // and/or exploitability
-function getIssueTitle(project, issue) {
-    return `${getProjectName(project)} - ${issue.title} in ${issue.package} ${
-        issue.version
-    } - ${issue.id}`;
+function getIssueTitle(issue) {
+    const { projects, title, package, version, id } = issue;
+    const projectName = getProjectName(projects);
+    return `${projectName} - ${title} in ${package} ${version} - ${id}`;
 }
 
-function getIssueBody(project, issue) {
+function getIssueBody(issue) {
+    const { projects, description, id, url } = issue;
     return `This issue has been created automatically by a source code scanner
 
-  ## Third party component with known security vulnerabilities
+## Third party component with known security vulnerabilities
 
-  Introduced to ${getProjectName(project)} through:
+Introduced to ${getProjectName(projects)} through:
 
-  ${getGraph(project, issue, '* ')}
+${getGraph(issue, '* ')}
 
-  ${issue.description}
-- [SNYKUID:${issue.id}](${issue.url})
+${description}
+- [SNYKUID:${id}](${url})
 `;
 }
 
-async function generateGhIssues(project, issues, existingMap = new Map()) {
+async function generateGhIssues(issues, existingMap = new Map()) {
+    await ensureLabelsAreCreated(octokit, ghOwner, ghRepo, issues);
+
     const labels =
         typeof args.ghLabels !== 'undefined' ? args.ghLabels.split(',') : [];
     labels.push('snyk');
 
-    const projectName = getProjectName(project);
     let ghNewIssues = [];
     let ghUpdatedIssues = [];
     if (batch && issues.length) {
-        const sevMap = issues.reduce((acc, cur) => {
-            acc[cur.severity] = (acc[cur.severity] || []).concat(cur);
-            return acc;
-        }, {});
-        const severities = Object.keys(sevMap)
-            .map((sev) => capitalize(sev))
-            .join(`/`);
-        const batchProps = await getBatchProps(issues);
-
-        // if there is a single vulnerability, just use that for the description
-        let description = `${issues[0].title}`;
-        if (issues.length > 1) {
-            // otherwise, if there are multiple vulnerabilities:
-            const titles = uniq(issues.map((x) => x.title));
-            const vuln = titles.length === 1 ? ` ${titles[0]}` : '';
-            // if there are multiple of vulnerabilities of a single type, include the type in the description
-            // otherwise, if there are multiple types of vulnerabilities of a multiple types, leave that out of the description
-            description = `${issues.length}${vuln} findings`;
-        }
-        const title = `${getProjectName(project)} - ${description} in ${
-            batchProps.package
-        } ${batchProps.version} (${severities})`;
-
-        const text = Object.keys(sevMap)
-            .map((sev) => {
-                const header = `# ${capitalize(sev)}-severity vulnerabilities`;
-                const body = sevMap[sev]
-                    .map(
-                        (issue, i) =>
-                            `\r\n\r\n<details>
-<summary>${i + 1}. ${issue.title} in ${issue.package} ${issue.version} (${
-                                issue.id
-                            })</summary>
-
-## Detailed paths
-${getGraph(project, issue, '* ')}
-
-${issue.description}
-- [${issue.id}](${issue.url})
-</details>`
-                    )
-                    .join('');
-                return header + body;
-            })
-            .join('\r\n\r\n');
+        const { title, body } = await getBatchIssue(issues);
 
         ghNewIssues = [
             await octokit.issues.create({
-                owner: args.ghOwner,
-                repo: args.ghRepo,
+                owner: ghOwner,
+                repo: ghRepo,
                 title,
-                body: `This issue has been created automatically by a source code scanner.
-
-Snyk project: [\`${project.name}\`](${project.browseUrl}) (manifest version ${project.imageTag})
-
-${text}`,
-                labels,
+                body,
+                labels: getLabels(issues),
             }),
         ];
     } else {
         const newIssues = issues.filter(
-            (issue) => !existingMap.has(getIssueTitle(project, issue))
+            (issue) => !existingMap.has(getIssueTitle(issue))
         );
         const updateIssues = issues.filter((issue) =>
-            existingMap.has(getIssueTitle(project, issue))
+            existingMap.has(getIssueTitle(issue))
         );
 
         ghNewIssues = await Promise.all(
             newIssues.map((issue) =>
                 octokit.issues.create({
-                    owner: args.ghOwner,
-                    repo: args.ghRepo,
-                    title: getIssueTitle(project, issue),
-                    body: getIssueBody(project, issue),
-                    labels,
+                    owner: ghOwner,
+                    repo: ghRepo,
+                    title: getIssueTitle(issue),
+                    body: getIssueBody(issue),
+                    labels: getLabels(issue),
                 })
             )
         );
@@ -433,12 +283,10 @@ ${text}`,
         ghUpdatedIssues = await Promise.all(
             updateIssues.map((issue) =>
                 octokit.issues.update({
-                    owner: args.ghOwner,
-                    repo: args.ghRepo,
-                    issue_number: existingMap.get(
-                        getIssueTitle(project, issue)
-                    ),
-                    body: getIssueBody(project, issue),
+                    owner: ghOwner,
+                    repo: ghRepo,
+                    issue_number: existingMap.get(getIssueTitle(issue)),
+                    body: getIssueBody(issue),
                 })
             )
         );

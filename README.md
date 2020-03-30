@@ -34,9 +34,11 @@ $ snyk-github-issue-creator [--snykOrg=<snykOrg> --snykProject=<snykProject> | -
 -   You can retrieve your snykOrg Id from your org settings page on [Snyk](https://snyk.io) or via the [Snyk API](https://snyk.docs.apiary.io/#reference/organisations/the-snyk-organisation-for-a-request/list-all-the-organisations-a-user-belongs-to).
 -   The SnykProject Id is available via the [Snyk API](https://snyk.docs.apiary.io/#reference/projects/projects-by-organisation/list-all-projects).
 -   You need to either provide a valid `SnykOrg` Id and `snykProject` Id, or use the `stdin` option to parse the output of a snyk monitor command to retrieve the necessary parameters.
+    -   If using `snykProject`, you can specify multiple project Ids separated by spaces
 -   The optional `projectName` allows to overrride the project name from Snyk (useful when runing Snyk with CI/CLI integration)
 -   If `parseManifestName` is specified, the dependency paths will start with the manifest name instead of the project name
 -   If `batch` is specified, the selected findings will be combined into a single GitHub issue (see this [example](screenshot-issue-batch.png))
+-   If `severityLabel` is specified, the GitHub issue will have severity label(s) added
 
 You will be presented with a list of _high_ and _medium_ vulnerability issues to
 generate a GitHub issue for. Type `t` or `true` to create an issue,
