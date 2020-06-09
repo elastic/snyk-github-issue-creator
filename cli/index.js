@@ -193,7 +193,7 @@ async function createIssues() {
             issue.title
         }`;
         console.log(`${description} - ${issue.id} (${issue.severity})
-${getGraph(issue, ' * ')}
+${getGraph(issue, ' * ', true)}
 `);
         issueQuestions.push({
             type: 'confirm',
