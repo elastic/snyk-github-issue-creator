@@ -6,6 +6,7 @@ const {
     compare,
     uniq,
     getProjectName,
+    getUniqueProjectNamePrefixes,
     getGraph,
 } = require('./utils');
 
@@ -76,6 +77,7 @@ const getBatchIssue = async (issues) => {
         description = `${issues.length}${vuln} findings`;
     }
     const projects = getProjects(issues);
+    const showFullManifest = getUniqueProjectNamePrefixes(projects).size > 1;
     const title = `${getProjectName(projects)} - ${description} in ${
         batchProps.package
     } ${batchProps.version}`;
@@ -99,7 +101,7 @@ const getBatchIssue = async (issues) => {
                         })</summary>
 
 ## Detailed paths
-${getGraph(issue, '* ')}
+${getGraph(issue, '* ', showFullManifest)}
 
 ${issue.description}
 - [${issue.id}](${issue.url})
