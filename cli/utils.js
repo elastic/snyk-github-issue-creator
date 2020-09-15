@@ -22,6 +22,10 @@ const getProjectName = (projectOrProjects) => {
     if (args.projectName) {
         return args.projectName;
     } else if (Array.isArray(projectOrProjects)) {
+        if (projectOrProjects.length === 1) {
+            // single project
+            return projectOrProjects[0].name;
+        }
         return `${projectOrProjects.length} projects`;
     }
     // single project
