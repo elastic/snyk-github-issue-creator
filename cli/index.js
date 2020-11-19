@@ -242,10 +242,6 @@ ${description}
 async function generateGhIssues(issues, existingMap = new Map()) {
     await ensureLabelsAreCreated(octokit, ghOwner, ghRepo, issues);
 
-    const labels =
-        typeof args.ghLabels !== 'undefined' ? args.ghLabels.split(',') : [];
-    labels.push('snyk');
-
     let ghNewIssues = [];
     let ghUpdatedIssues = [];
     if (batch && issues.length) {
