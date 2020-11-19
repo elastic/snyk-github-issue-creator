@@ -1,5 +1,8 @@
-const args = require('minimist')(process.argv.slice(2));
+'use strict';
+
 const semver = require('semver');
+
+const { conf } = require('./config');
 
 // ascending order
 const compareText = (a, b) => a.toLowerCase().localeCompare(b.toLowerCase());
@@ -19,8 +22,8 @@ const capitalize = (s) => {
 const uniq = (array) => [...new Set(array)];
 
 const getProjectName = (projectOrProjects) => {
-    if (args.projectName) {
-        return args.projectName;
+    if (conf.projectName) {
+        return conf.projectName;
     } else if (Array.isArray(projectOrProjects)) {
         if (projectOrProjects.length === 1) {
             // single project
@@ -33,7 +36,7 @@ const getProjectName = (projectOrProjects) => {
 };
 
 const getManifestName = (project, showManifestPrefix) => {
-    if (args.parseManifestName) {
+    if (conf.parseManifestName) {
         if (showManifestPrefix) {
             return project.name;
         }
