@@ -193,7 +193,7 @@ async function createIssues() {
             issue.title
         }`;
         console.log(`${description} - ${issue.id} (${issue.severity})
-${getGraph(issue, ' * ')}
+${getGraph(issue, ' * ', true)}
 `);
         issueQuestions.push({
             type: 'confirm',
@@ -241,10 +241,6 @@ ${description}
 
 async function generateGhIssues(issues, existingMap = new Map()) {
     await ensureLabelsAreCreated(octokit, ghOwner, ghRepo, issues);
-
-    const labels =
-        typeof args.ghLabels !== 'undefined' ? args.ghLabels.split(',') : [];
-    labels.push('snyk');
 
     let ghNewIssues = [];
     let ghUpdatedIssues = [];

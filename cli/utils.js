@@ -22,25 +22,42 @@ const getProjectName = (projectOrProjects) => {
     if (args.projectName) {
         return args.projectName;
     } else if (Array.isArray(projectOrProjects)) {
+        if (projectOrProjects.length === 1) {
+            // single project
+            return projectOrProjects[0].name;
+        }
         return `${projectOrProjects.length} projects`;
     }
     // single project
     return projectOrProjects.name;
 };
 
-const getManifestName = (project) => {
+const getManifestName = (project, showManifestPrefix) => {
     if (args.parseManifestName) {
+        if (showManifestPrefix) {
+            return project.name;
+        }
         return project.name.substring(project.name.indexOf(':') + 1);
     }
     return getProjectName(project);
 };
 
-const getGraph = (issue, prefix) => {
+const getUniqueProjectNamePrefixes = (projects) =>
+    new Set(projects.map(({ name }) => name.substring(0, name.indexOf(':'))));
+
+const getGraph = (issue, prefix, showFullManifest) => {
+    const uniqueProjectNamePrefixes = getUniqueProjectNamePrefixes(
+        issue.from.map(({ project }) => project)
+    );
+    const isMultipleBranches = uniqueProjectNamePrefixes.size > 1;
     return issue.from
-        .map(
-            ({ project, paths }) =>
-                `${prefix}${getManifestName(project)} > ${paths.join(' > ')}`
-        )
+        .map(({ project, paths }) => {
+            const root = getManifestName(
+                project,
+                isMultipleBranches || showFullManifest
+            );
+            return `${prefix}${root} > ${paths.join(' > ')}`;
+        })
         .join('\r\n');
 };
 
@@ -53,5 +70,6 @@ module.exports = {
     },
     uniq,
     getProjectName,
+    getUniqueProjectNamePrefixes,
     getGraph,
 };
