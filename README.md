@@ -15,7 +15,6 @@ To use this tool you must first set:
 
 ```bash
 $ npm install
-$ chmod u+x ./cli/index.js
 $ npm link
 ```
 
