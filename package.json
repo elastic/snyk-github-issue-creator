@@ -16,15 +16,15 @@
     "license": "ISC",
     "dependencies": {
         "@octokit/plugin-throttling": "^3.2.0",
-        "@octokit/rest": "^17.0.0",
+        "@octokit/rest": "^17.1.3",
         "chalk": "^3.0.0",
         "configstore": "^5.0.1",
-        "enquirer": "^2.3.4",
+        "enquirer": "^2.3.5",
         "lodash.flatten": "^4.4.0",
-        "minimist": "^1.2.3",
+        "minimist": "^1.2.4",
         "request": "^2.88.0",
         "request-promise-native": "^1.0.8",
-        "semver": "^7.1.3"
+        "semver": "^7.3.2"
     },
     "devDependencies": {
         "prettier": "2.0.1"
