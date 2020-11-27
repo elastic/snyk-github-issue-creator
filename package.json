@@ -20,7 +20,7 @@
         "chalk": "^3.0.0",
         "enquirer": "^2.3.5",
         "lodash.flatten": "^4.4.0",
-        "minimist": "^1.2.4",
+        "minimist": "^1.2.5",
         "request": "^2.88.0",
         "request-promise-native": "^1.0.8",
         "semver": "^7.3.2",
