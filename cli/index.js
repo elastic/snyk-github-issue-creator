@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
+const args = require('minimist')(process.argv.slice(2));
 const { Octokit } = require('@octokit/rest');
 const { throttling } = require('@octokit/plugin-throttling');
 const { prompt } = require('enquirer');
@@ -16,7 +17,7 @@ const Snyk = require('./snyk');
 let octokit;
 
 (async () => {
-    await initConfig();
+    await initConfig(args);
 
     const ThrottledOctokit = Octokit.plugin(throttling);
     octokit = new ThrottledOctokit({

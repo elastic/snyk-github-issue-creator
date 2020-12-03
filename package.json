@@ -4,7 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "tape test/*.js"
     },
     "bin": {
         "snyk-github-issue-creator": "./cli/index.js"
@@ -24,10 +24,12 @@
         "minimist": "^1.2.5",
         "request": "^2.88.0",
         "request-promise-native": "^1.0.9",
-        "semver": "^7.3.2"
+        "semver": "^7.3.2",
+        "uuid-validate": "0.0.3"
     },
     "devDependencies": {
-        "prettier": "2.0.1"
+        "prettier": "2.0.1",
+        "tape": "^5.0.1"
     },
     "prettier": {
         "trailingComma": "es5",
