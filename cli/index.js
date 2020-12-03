@@ -1,65 +1,64 @@
 #!/usr/bin/env node
+'use strict';
 
+const args = require('minimist')(process.argv.slice(2));
 const { Octokit } = require('@octokit/rest');
 const { throttling } = require('@octokit/plugin-throttling');
 const { prompt } = require('enquirer');
-const args = require('minimist')(process.argv.slice(2));
-const request = require('request-promise-native');
 const chalk = require('chalk');
 const flatten = require('lodash.flatten');
 
 const { getBatchProps, getBatchIssue } = require('./batch');
-const parseAndValidateInput = require('./input');
+const { init: initConfig, conf } = require('./config');
 const { getLabels, ensureLabelsAreCreated } = require('./labels');
 const { compare, getProjectName, getGraph, uniq } = require('./utils');
+const Snyk = require('./snyk');
 
-const snykBaseUrl = 'https://snyk.io/api/v1';
+let octokit;
 
-const {
-    snykToken,
-    ghPat,
-    ghOwner,
-    ghRepo,
-    snykOrg,
-    snykProjects,
-} = parseAndValidateInput(args);
-const autoGenerate = !!args.autoGenerate;
-const batch = !!args.batch;
+(async () => {
+    await initConfig(args);
 
-const ThrottledOctokit = Octokit.plugin(throttling);
-const octokit = new ThrottledOctokit({
-    auth: ghPat,
-    userAgent: `${ghOwner} ${ghRepo}`,
-    throttle: {
-        onRateLimit: (retryAfter, options) => {
-            console.warn(
-                chalk.yellow(
-                    `Request quota exhausted for request ${options.method} ${options.url}`
-                )
-            );
+    const ThrottledOctokit = Octokit.plugin(throttling);
+    octokit = new ThrottledOctokit({
+        auth: conf.ghPat,
+        userAgent: `${conf.ghOwner} ${conf.ghRepo}`,
+        throttle: {
+            onRateLimit: (retryAfter, options) => {
+                console.warn(
+                    chalk.yellow(
+                        `Request quota exhausted for request ${options.method} ${options.url}`
+                    )
+                );
 
-            if (options.request.retryCount === 0) {
-                // only retries once
-                console.log(`Retrying after ${retryAfter} seconds!`);
-                return true;
-            }
+                if (options.request.retryCount === 0) {
+                    // only retries once
+                    console.log(`Retrying after ${retryAfter} seconds!`);
+                    return true;
+                }
+            },
+            onAbuseLimit: (retryAfter, options) => {
+                // does not retry, only logs a warning
+                console.warn(
+                    chalk.yellow(
+                        `Abuse detected for request ${options.method} ${options.url}`
+                    )
+                );
+            },
         },
-        onAbuseLimit: (retryAfter, options) => {
-            // does not retry, only logs a warning
-            console.warn(
-                chalk.yellow(
-                    `Abuse detected for request ${options.method} ${options.url}`
-                )
-            );
-        },
-    },
+    });
+
+    await createIssues();
+})().catch((err) => {
+    console.error(chalk.red(err ? err.stack : 'Aborted!'));
+    process.exit(1);
 });
 
 async function createIssues() {
     // Display confirmation when creating issues in public GitHub repo
     const repo = await octokit.repos.get({
-        owner: ghOwner,
-        repo: ghRepo,
+        owner: conf.ghOwner,
+        repo: conf.ghRepo,
     });
     if (!repo.data.private) {
         const response = await prompt({
@@ -75,38 +74,15 @@ async function createIssues() {
         }
     }
 
-    const projects = await request({
-        method: 'get',
-        url: `${snykBaseUrl}/org/${snykOrg}/projects`,
-        headers: {
-            authorization: `token ${snykToken}`,
-        },
-        json: true,
-    });
+    const snyk = new Snyk({ token: conf.snykToken, orgId: conf.snykOrg });
+    const projects = await snyk.projects();
 
     const projectIssues = await Promise.all(
-        snykProjects.map((snykProject) =>
-            request({
-                method: 'post',
-                url: `${snykBaseUrl}/org/${snykOrg}/project/${snykProject}/issues`,
-                headers: {
-                    authorization: `token ${snykToken}`,
-                },
-                body: {
-                    filters: {
-                        severities: ['high', 'medium'],
-                        types: ['vuln'],
-                        ignored: false,
-                        patched: false,
-                    },
-                },
-                json: true,
-            }).then((response) => {
+        conf.snykProjects.map((snykProject) =>
+            snyk.issues(snykProject).then((issues) => {
                 // only return vulnerabilities; add the project to each vulnerability object
-                const project = projects.projects.find(
-                    (x) => x.id === snykProject
-                );
-                return response.issues.vulnerabilities.map((x) => ({
+                const project = projects.find((x) => x.id === snykProject);
+                return issues.vulnerabilities.map((x) => ({
                     ...x,
                     project,
                 }));
@@ -144,14 +120,14 @@ async function createIssues() {
     }, {});
     issues = Object.values(reduced);
 
-    const batchProps = batch && (await getBatchProps(issues));
+    const batchProps = conf.batch && (await getBatchProps(issues));
     if (batchProps) {
         // filter down to the package that was picked
         issues = batchProps.issues;
     }
 
-    if (autoGenerate) {
-        if (batch) {
+    if (conf.autoGenerate) {
+        if (conf.batch) {
             console.log(
                 chalk.grey(
                     `Auto-generating a single GitHub issue for ${
@@ -171,7 +147,7 @@ async function createIssues() {
 
             // retrieve issue IDs already created in GitHub
             const existingIssues = await octokit.paginate(
-                `GET /search/issues?q=repo%3A${ghOwner}/${ghRepo}+is%3Aissue+label%3Asnyk`,
+                `GET /search/issues?q=repo%3A${conf.ghOwner}/${conf.ghRepo}+is%3Aissue+label%3Asnyk`,
                 (response) =>
                     response.data.map((existingIssue) => [
                         existingIssue.title,
@@ -198,7 +174,7 @@ ${getGraph(issue, ' * ', true)}
         issueQuestions.push({
             type: 'confirm',
             name: `question-${ctr++}`,
-            message: batch
+            message: conf.batch
                 ? `Add ${description} to batch?`
                 : `Create GitHub issue for ${description}?`,
             default: false,
@@ -219,9 +195,9 @@ ${getGraph(issue, ' * ', true)}
 // Must include Snyk id to distinguish between issues within the same component, that might have different mitigation
 // and/or exploitability
 function getIssueTitle(issue) {
-    const { projects, title, package, version, id } = issue;
+    const { projects, title, package: packageName, version, id } = issue;
     const projectName = getProjectName(projects);
-    return `${projectName} - ${title} in ${package} ${version} - ${id}`;
+    return `${projectName} - ${title} in ${packageName} ${version} - ${id}`;
 }
 
 function getIssueBody(issue) {
@@ -240,17 +216,17 @@ ${description}
 }
 
 async function generateGhIssues(issues, existingMap = new Map()) {
-    await ensureLabelsAreCreated(octokit, ghOwner, ghRepo, issues);
+    await ensureLabelsAreCreated(octokit, conf.ghOwner, conf.ghRepo, issues);
 
     let ghNewIssues = [];
     let ghUpdatedIssues = [];
-    if (batch && issues.length) {
+    if (conf.batch && issues.length) {
         const { title, body } = await getBatchIssue(issues);
 
         ghNewIssues = [
             await octokit.issues.create({
-                owner: ghOwner,
-                repo: ghRepo,
+                owner: conf.ghOwner,
+                repo: conf.ghRepo,
                 title,
                 body,
                 labels: getLabels(issues),
@@ -267,8 +243,8 @@ async function generateGhIssues(issues, existingMap = new Map()) {
         ghNewIssues = await Promise.all(
             newIssues.map((issue) =>
                 octokit.issues.create({
-                    owner: ghOwner,
-                    repo: ghRepo,
+                    owner: conf.ghOwner,
+                    repo: conf.ghRepo,
                     title: getIssueTitle(issue),
                     body: getIssueBody(issue),
                     labels: getLabels(issue),
@@ -279,8 +255,8 @@ async function generateGhIssues(issues, existingMap = new Map()) {
         ghUpdatedIssues = await Promise.all(
             updateIssues.map((issue) =>
                 octokit.issues.update({
-                    owner: ghOwner,
-                    repo: ghRepo,
+                    owner: conf.ghOwner,
+                    repo: conf.ghRepo,
                     issue_number: existingMap.get(getIssueTitle(issue)),
                     body: getIssueBody(issue),
                 })
@@ -320,8 +296,3 @@ async function generateGhIssues(issues, existingMap = new Map()) {
         }
     }
 }
-
-createIssues().catch((err) => {
-    console.error(chalk.red(err.stack));
-    process.exit(1);
-});

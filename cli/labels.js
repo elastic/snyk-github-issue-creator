@@ -1,4 +1,6 @@
-const args = require('minimist')(process.argv.slice(2));
+'use strict';
+
+const { conf } = require('./config');
 const { uniq } = require('./utils');
 
 const LABELS = {
@@ -25,9 +27,9 @@ const DEFAULT_LABEL = {
 };
 
 const getLabels = (issueOrIssues) => {
-    let labels = args.ghLabels ? args.ghLabels.split(',') : [];
+    let labels = [...conf.ghLabels];
     labels.push('snyk');
-    if (args.severityLabel) {
+    if (conf.severityLabel) {
         const issues = Array.isArray(issueOrIssues) ? issueOrIssues : [];
         const severities = uniq(issues.map((x) => `severity:${x.severity}`));
         labels = labels.concat(severities);

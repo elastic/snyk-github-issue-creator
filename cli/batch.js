@@ -1,3 +1,5 @@
+'use strict';
+
 const { prompt } = require('enquirer');
 const flatten = require('lodash.flatten');
 
@@ -15,22 +17,23 @@ const getBatchProps = async (issues) => {
 
     if (packageNames.length === 1) {
         return {
-            package: packageNames[0],
+            packageName: packageNames[0],
             version: getBatchVersionString(issues),
             issues,
         };
     }
 
     const reduced = issues.reduce((acc, cur) => {
-        const { package } = cur;
-        if (!acc[package]) {
-            acc[package] = [];
+        const packageName = cur.package;
+        if (!acc[packageName]) {
+            acc[packageName] = [];
         }
-        acc[package].push(cur);
+        acc[packageName].push(cur);
         return acc;
     }, {});
     const choices = Object.entries(reduced).map(
-        ([package, issues]) => `${package} ${getBatchVersionString(issues)}`
+        ([packageName, issues]) =>
+            `${packageName} ${getBatchVersionString(issues)}`
     );
 
     const { selected } = await prompt({
@@ -40,11 +43,11 @@ const getBatchProps = async (issues) => {
         choices,
     });
 
-    const package = selected.substring(0, selected.indexOf(' '));
+    const packageName = selected.substring(0, selected.indexOf(' '));
     const version = selected.substring(selected.indexOf(' ') + 1);
-    const _issues = issues.filter((issue) => issue.package === package);
+    const _issues = issues.filter((issue) => issue.package === packageName);
     return {
-        package,
+        packageName,
         version,
         issues: _issues,
     };
@@ -79,7 +82,7 @@ const getBatchIssue = async (issues) => {
     const projects = getProjects(issues);
     const showFullManifest = getUniqueProjectNamePrefixes(projects).size > 1;
     const title = `${getProjectName(projects)} - ${description} in ${
-        batchProps.package
+        batchProps.packageName
     } ${batchProps.version}`;
 
     const headerText = `This issue has been created automatically by a source code scanner.\r\n\r\nSnyk project(s):`;
