@@ -1,6 +1,6 @@
 # GitHub Issue Creator
 
-[![Known Vulnerabilities](https://snyk.io/test/github/pierre-ernst/snyk-github-issue-creator/badge.svg?targetFile=package.json)](https://snyk.io/test/github/pierre-ernst/snyk-github-issue-creator?targetFile=package.json)
+[![Known Vulnerabilities](https://snyk.io/test/github/elastic/snyk-github-issue-creator/badge.svg?targetFile=package.json)](https://snyk.io/test/github/elastic/snyk-github-issue-creator?targetFile=package.json)
 
 Creates GitHub issues from Snyk Project issues.
 
@@ -8,7 +8,6 @@ Creates GitHub issues from Snyk Project issues.
 
 ```bash
 $ npm install
-$ chmod u+x ./cli/index.js
 $ npm link
 ```
 
