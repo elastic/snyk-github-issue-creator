@@ -2,7 +2,8 @@
 
 [![Known Vulnerabilities](https://snyk.io/test/github/elastic/snyk-github-issue-creator/badge.svg?targetFile=package.json)](https://snyk.io/test/github/elastic/snyk-github-issue-creator?targetFile=package.json)
 
-Creates GitHub issues from Snyk Project issues.
+A CLI for creating GitHub issues based on vulnerabilities from your Snyk
+projects.
 
 ## Installation
 
