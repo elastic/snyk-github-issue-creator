@@ -1,5 +1,5 @@
 {
-    "name": "snyk-github-issue-creator",
+    "name": "@elastic/snyk-github-issue-creator",
     "version": "1.0.0",
     "description": "A CLI for creating GitHub issues based on vulnerabilities from your Snyk projects",
     "main": "index.js",
