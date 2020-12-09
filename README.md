@@ -7,10 +7,22 @@ projects.
 
 ## Installation
 
-```bash
-$ npm install
-$ npm link
+You can either install the package globally and then run it:
+
 ```
+$ npm install --global @elastic/snyk-github-issue-creator
+$ snyk-github-issue-creator --help
+```
+
+Or you can use `npx` to run it without having to install it globally
+first:
+
+```
+$ npx @elastic/snyk-github-issue-creator --help
+```
+
+Note: The usage examples used in the rest of this documentation expects
+that you have installed the package globally.
 
 ## Usage
 
