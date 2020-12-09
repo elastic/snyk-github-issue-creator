@@ -6,9 +6,7 @@
     "scripts": {
         "test": "tape test/*.js"
     },
-    "bin": {
-        "snyk-github-issue-creator": "./cli/index.js"
-    },
+    "bin": "cli/index.js",
     "engines": {
         "node": ">=14"
     },
