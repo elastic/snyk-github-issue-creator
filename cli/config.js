@@ -4,7 +4,6 @@ const chalk = require('chalk');
 const fs = require('fs');
 const Configstore = require('configstore');
 const { prompt } = require('enquirer');
-const uuidValidate = require('uuid-validate');
 
 const { name: pkgName, version: pkgVersion } = require('../package.json');
 const Snyk = require('./snyk');
@@ -238,8 +237,4 @@ function list(value) {
     return typeof value === 'string'
         ? value.split(',').map((s) => s.trim())
         : value;
-}
-
-function uuid(value) {
-    return uuidValidate(value) ? true : 'Invalid UUID(s)';
 }

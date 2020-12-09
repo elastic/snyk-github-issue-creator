@@ -24,8 +24,7 @@
         "minimist": "^1.2.5",
         "request": "^2.88.0",
         "request-promise-native": "^1.0.9",
-        "semver": "^7.3.2",
-        "uuid-validate": "0.0.3"
+        "semver": "^7.3.2"
     },
     "devDependencies": {
         "prettier": "2.0.1",
