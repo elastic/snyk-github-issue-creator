@@ -7,6 +7,9 @@
         "test": "tape test/*.js"
     },
     "bin": "cli/index.js",
+    "files": [
+      "cli/**/*"
+    ],
     "engines": {
         "node": ">=14"
     },
