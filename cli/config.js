@@ -138,10 +138,14 @@ exports.init = async (args) => {
                 type: 'multiselect',
                 name: 'snykProjects',
                 message: 'Snyk project UUIDs',
-                choices: (await snyk.projects(conf.snykOrg)).map((p) => ({
-                    name: p.id,
-                    message: p.name,
-                })),
+                choices: (await snyk.projects(conf.snykOrg))
+                    .map((p) => ({
+                        name: p.id,
+                        message: p.name,
+                    }))
+                    .sort(({ message: a }, { message: b }) =>
+                        a < b ? -1 : a > b ? 1 : 0
+                    ),
                 initial: snykProjects,
             })
         );
