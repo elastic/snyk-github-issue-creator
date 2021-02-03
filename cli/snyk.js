@@ -5,12 +5,13 @@ const request = require('request-promise-native');
 const baseUrl = 'https://snyk.io/api/v1';
 
 module.exports = class Snyk {
-    constructor({ token, orgId }) {
+    constructor({ token, orgId, minimumSeverity }) {
         this._headers = {
             'Content-Type': 'application/json; charset=utf-8',
             Authorization: token,
         };
         this._orgId = orgId;
+        this._minimumSeverity = minimumSeverity;
     }
 
     setOrg(id) {
@@ -45,7 +46,7 @@ module.exports = class Snyk {
                 headers: this._headers,
                 body: {
                     filters: {
-                        severities: ['high', 'medium'],
+                        severities: getSeverities(this._minimumSeverity),
                         types: ['vuln'],
                         ignored: false,
                         patched: false,
@@ -56,3 +57,12 @@ module.exports = class Snyk {
         ).issues;
     }
 };
+
+function getSeverities(minimumSeverity) {
+    if (minimumSeverity && minimumSeverity.toLowerCase() === 'high') {
+        return ['high'];
+    } else if (!minimumSeverity || minimumSeverity.toLowerCase() === 'medium') {
+        return ['high', 'medium'];
+    }
+    return ['high', 'medium', 'low'];
+}

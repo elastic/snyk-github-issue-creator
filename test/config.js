@@ -67,6 +67,7 @@ test('should be 100% configurable by cli arguments', async (t) => {
         severityLabel: false,
         parseManifestName: true,
         batch: false,
+        minimumSeverity: '_minimumSeverity_',
         autoGenerate: true,
         save: false,
     });
@@ -86,6 +87,7 @@ test('should be 100% configurable by cli arguments', async (t) => {
         severityLabel: false,
         parseManifestName: true,
         batch: false,
+        minimumSeverity: '_minimumSeverity_',
         autoGenerate: true,
         save: false,
     });

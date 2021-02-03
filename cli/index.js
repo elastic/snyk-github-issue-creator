@@ -74,7 +74,11 @@ async function createIssues() {
         }
     }
 
-    const snyk = new Snyk({ token: conf.snykToken, orgId: conf.snykOrg });
+    const snyk = new Snyk({
+        token: conf.snykToken,
+        orgId: conf.snykOrg,
+        minimumSeverity: conf.minimumSeverity,
+    });
     const projects = await snyk.projects();
 
     const projectIssues = await Promise.all(

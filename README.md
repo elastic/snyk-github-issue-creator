@@ -54,6 +54,10 @@ $ snyk-github-issue-creator [options]
     project name.
 -   `--batch, --no-batch`: If specified, the selected findings will be
     combined into a single GitHub issue.
+-   `--minimumSeverity`: If specified, vulnerabilities will only be
+    displayed if they meet the minimum severity level. Valid options are
+    'low', 'medium', or 'high'. Default is 'medium' (if using `--auto`
+    and you have not saved this setting previously).
 -   `--autoGenerate, --no-autoGenerate`: If specified, GitHub issues
     will be automatically generated without a confirmation prompt.
 -   `--stdin`: Read Snyk Organization UUID and Snyk Project UUID from
@@ -94,6 +98,9 @@ setup questions:
 -   **Batch**: If specified, the selected findings will be combined into
     a single GitHub issue (see this
     [example](screenshot-issue-batch.png)).
+-   **Minimum severity level**: Vulnerabilities will only be displayed if
+    they meet the minimum severity level. Valid options are 'low',
+    'medium', or 'high'.
 -   **Auto generate**: If specified, GitHub issues will be automatically
     generated without a confirmation prompt (e.g. if you want to run
     this as part of a CI pipeline).
@@ -103,10 +110,9 @@ setup questions:
 
 ### Picking Vulnerabilities
 
-After answering the setup questions, you will be presented with a list
-of _high_ and _medium_ vulnerability issues to generate a GitHub issue
-for. Type `t` or `true` to create an issue, and `f` or `false` to skip
-it.
+After answering the setup questions, you will be presented with a list of
+vulnerabilities to generate a GitHub issue for. Type `t` or `true` to
+create an issue, and `f` or `false` to skip it.
 
 ### Examples
 
