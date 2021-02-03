@@ -12,6 +12,8 @@ const {
     getGraph,
 } = require('./utils');
 
+const SEVERITY_PREFIX_PADDING = 16; // each vulnerability in the prompt has a severity label that is padded out to this many characters
+
 const getBatchProps = async (issues) => {
     const packageNames = uniq(issues.map((x) => x.package));
 
@@ -31,10 +33,11 @@ const getBatchProps = async (issues) => {
         acc[packageName].push(cur);
         return acc;
     }, {});
-    const choices = Object.entries(reduced).map(
-        ([packageName, issues]) =>
-            `${packageName} ${getBatchVersionString(issues)}`
-    );
+    const choices = Object.entries(reduced).map(([packageName, issues]) => {
+        const severity = getBatchSeverityString(issues);
+        const version = getBatchVersionString(issues);
+        return `${severity} ${packageName} ${version}`;
+    });
 
     const { selected } = await prompt({
         type: 'select',
@@ -43,14 +46,26 @@ const getBatchProps = async (issues) => {
         choices,
     });
 
-    const packageName = selected.substring(0, selected.indexOf(' '));
-    const version = selected.substring(selected.indexOf(' ') + 1);
+    const trimmed = selected.slice(SEVERITY_PREFIX_PADDING + 1); // remove the severity prefix
+    const packageName = trimmed.substring(0, trimmed.indexOf(' '));
+    const version = trimmed.substring(trimmed.indexOf(' ') + 1);
     const _issues = issues.filter((issue) => issue.package === packageName);
     return {
         packageName,
         version,
         issues: _issues,
     };
+};
+
+const getBatchSeverityString = (issues) => {
+    const severities = uniq(issues.map((x) => x.severity)).sort(
+        compare.severities
+    );
+    const severityText = `${capitalize(severities[0])} severity:`; // only use the highest severity level (High, Medium, or Low)
+    const padding = ' '
+        .repeat(SEVERITY_PREFIX_PADDING)
+        .slice(severityText.length);
+    return `${severityText}${padding}`;
 };
 
 const getBatchVersionString = (issues) => {

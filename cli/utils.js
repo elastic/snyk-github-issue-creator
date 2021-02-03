@@ -8,6 +8,21 @@ const { conf } = require('./config');
 const compareText = (a, b) => a.toLowerCase().localeCompare(b.toLowerCase());
 
 // descending order
+const compareSeverities = (a, b) => {
+    if (a === b) {
+        return 0;
+    } else if (a === 'high') {
+        return -1;
+    } else if (b === 'high') {
+        return 1;
+    } else if (a === 'medium') {
+        return -1;
+    } else if (b === 'medium') {
+        return 1;
+    }
+};
+
+// descending order
 const compareVersions = (a, b) =>
     semver.lt(a, b) ? 1 : semver.gt(a, b) ? -1 : 0;
 
@@ -68,6 +83,7 @@ module.exports = {
     capitalize,
     compare: {
         text: compareText,
+        severities: compareSeverities,
         versions: compareVersions,
         arrays: compareArrays,
     },
