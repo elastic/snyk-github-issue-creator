@@ -68,14 +68,29 @@ const getGraph = (issue, prefix, showFullManifest) => {
         issue.from.map(({ project }) => project)
     );
     const isMultipleBranches = uniqueProjectNamePrefixes.size > 1;
-    return issue.from
-        .map(({ project, paths }) => {
-            const root = getManifestName(
-                project,
-                isMultipleBranches || showFullManifest
-            );
-            return `${prefix}${root} > ${paths.join(' > ')}`;
-        })
+    const pathsMap = issue.from.reduce((acc, { project, paths }) => {
+        const root = getManifestName(
+            project,
+            isMultipleBranches || showFullManifest
+        );
+        let path;
+        if (issue.from.length > 20 && paths.length > 1) {
+            // If there are lots of paths, reduce those that are transitive dependencies
+            path = `${paths[0]} > ... > ${paths[paths.length - 1]}`;
+        } else {
+            path = paths.join(' > ');
+        }
+        const key = `${prefix}${root} > ${path}`;
+        const val = acc.get(key);
+        if (val) {
+            acc.set(key, val + 1);
+        } else {
+            acc.set(key, 1);
+        }
+        return acc;
+    }, new Map());
+    return Array.from(pathsMap.entries())
+        .map(([k, v]) => (v === 1 ? k : k.replace('...', `... (x${v})`)))
         .join('\r\n');
 };
 
