@@ -41,6 +41,11 @@ Advanced options:
 --batch, --no-batch
                  If specified, the selected findings will be combined into a
                  single GitHub issue.
+--minimumSeverity=...
+                 If specified, vulnerabilities will only be displayed if they
+                 meet the minimum severity level. Valid options are 'low',
+                 'medium', or 'high'. Default is 'medium' (if using --auto and
+                 you have not saved this setting previously).
 --autoGenerate, --no-autoGenerate
                  If specified, GitHub issues will be automatically generated
                  without a confirmation prompt.
@@ -138,10 +143,14 @@ exports.init = async (args) => {
                 type: 'multiselect',
                 name: 'snykProjects',
                 message: 'Snyk project UUIDs',
-                choices: (await snyk.projects(conf.snykOrg)).map((p) => ({
-                    name: p.id,
-                    message: p.name,
-                })),
+                choices: (await snyk.projects(conf.snykOrg))
+                    .map((p) => ({
+                        name: p.id,
+                        message: p.name,
+                    }))
+                    .sort(({ message: a }, { message: b }) =>
+                        a < b ? -1 : a > b ? 1 : 0
+                    ),
                 initial: snykProjects,
             })
         );
@@ -210,6 +219,14 @@ exports.init = async (args) => {
                 initial: getConfig('batch'),
             },
             {
+                type: 'select',
+                name: 'minimumSeverity',
+                message: 'Minimum severity',
+                skip: 'minimumSeverity' in args,
+                initial: getConfig('minimumSeverity'),
+                choices: SEVERITY_LEVELS,
+            },
+            {
                 type: 'confirm',
                 name: 'autoGenerate',
                 message: 'Auto generate',
@@ -228,6 +245,8 @@ exports.init = async (args) => {
 
     if (conf.save) config.set(conf);
 };
+
+const SEVERITY_LEVELS = ['low', 'medium', 'high'];
 
 function required(value, { message }) {
     return value ? true : `${message} is required`;
