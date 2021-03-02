@@ -12,7 +12,9 @@ const {
     getGraph,
 } = require('./utils');
 
-const SEVERITY_PREFIX_PADDING = 16; // each vulnerability in the prompt has a severity label that is padded out to this many characters
+// Longest possible severity string. Each vulnerability in the prompt has a
+// severity label that is padded out to this many characters
+const SEVERITY_PREFIX_PADDING = 'Medium severity (999):'.length;
 
 const getBatchProps = async (issues) => {
     const packageNames = uniq(issues.map((x) => x.package));
@@ -61,7 +63,9 @@ const getBatchSeverityString = (issues) => {
     const severities = uniq(issues.map((x) => x.severity)).sort(
         compare.severities
     );
-    const severityText = `${capitalize(severities[0])} severity:`; // only use the highest severity level (High, Medium, or Low)
+    const severityText = `${capitalize(severities[0])} severity (${
+        issues[0].priorityScore
+    }):`; // only use the highest severity level (High, Medium, or Low)
     const padding = ' '
         .repeat(SEVERITY_PREFIX_PADDING)
         .slice(severityText.length);
