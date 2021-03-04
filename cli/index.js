@@ -11,7 +11,13 @@ const flatten = require('lodash.flatten');
 const { getBatchProps, getBatchIssue } = require('./batch');
 const { init: initConfig, conf } = require('./config');
 const { getLabels, ensureLabelsAreCreated } = require('./labels');
-const { compare, getProjectName, getGraph, uniq } = require('./utils');
+const {
+    capitalize,
+    compare,
+    getProjectName,
+    getGraph,
+    uniq,
+} = require('./utils');
 const Snyk = require('./snyk');
 
 let octokit;
@@ -96,6 +102,7 @@ async function createIssues() {
 
     let issues = flatten(projectIssues).sort(
         (a, b) =>
+            b.priorityScore - a.priorityScore || // descending priority score
             compare.severities(a.severity, b.severity) || // descending severity (High, then Medium, then Low)
             compare.text(a.package, b.package) || // ascending package name
             compare.versions(a.version, b.version) || // descending package version
@@ -167,19 +174,28 @@ async function createIssues() {
     const issueQuestions = [];
 
     let ctr = 0;
-    console.log(`Found ${issues.length} vulnerabilities:\n`);
+    console.log(`Found ${issues.length} vulnerabilities...`);
+    console.log(
+        `Format: [Severity]|[Priority score] - [Package name] [Package Version] - [Vuln title] - [Vuln ID]\n`
+    );
     issues.forEach((issue, i) => {
-        const description = `${i + 1}. ${issue.package} ${issue.version} - ${
-            issue.title
-        }`;
-        console.log(`${description} - ${issue.id} (${issue.severity})
-${getGraph(issue, ' * ', true)}
-`);
+        const {
+            severity,
+            priorityScore,
+            package: pkg,
+            version,
+            title,
+            id,
+        } = issue;
+        const severityPrefix = `${capitalize(severity[0])}|${priorityScore}`;
+        const num = i + 1;
+        const description = `${num}. ${severityPrefix} - ${pkg} ${version} - ${title} - ${id}`;
+        console.log(`${description}\n${getGraph(issue, ' * ', true)}\n`);
         issueQuestions.push({
             type: 'confirm',
             name: `question-${ctr++}`,
             message: conf.batch
-                ? `Add ${description} to batch?`
+                ? `Add "${description}" to batch?`
                 : `Create GitHub issue for ${description}?`,
             default: false,
         });

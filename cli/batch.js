@@ -12,7 +12,9 @@ const {
     getGraph,
 } = require('./utils');
 
-const SEVERITY_PREFIX_PADDING = 16; // each vulnerability in the prompt has a severity label that is padded out to this many characters
+// Longest possible severity string. Each vulnerability in the prompt has a
+// severity label that is padded out to this many characters
+const SEVERITY_PREFIX_PADDING = 'M|1000'.length;
 
 const getBatchProps = async (issues) => {
     const packageNames = uniq(issues.map((x) => x.package));
@@ -36,7 +38,7 @@ const getBatchProps = async (issues) => {
     const choices = Object.entries(reduced).map(([packageName, issues]) => {
         const severity = getBatchSeverityString(issues);
         const version = getBatchVersionString(issues);
-        return `${severity} ${packageName} ${version}`;
+        return `${severity} - ${packageName} ${version}`;
     });
 
     const { selected } = await prompt({
@@ -46,7 +48,7 @@ const getBatchProps = async (issues) => {
         choices,
     });
 
-    const trimmed = selected.slice(SEVERITY_PREFIX_PADDING + 1); // remove the severity prefix
+    const trimmed = selected.slice(SEVERITY_PREFIX_PADDING + ' - '.length); // remove the severity prefix
     const packageName = trimmed.substring(0, trimmed.indexOf(' '));
     const version = trimmed.substring(trimmed.indexOf(' ') + 1);
     const _issues = issues.filter((issue) => issue.package === packageName);
@@ -58,10 +60,10 @@ const getBatchProps = async (issues) => {
 };
 
 const getBatchSeverityString = (issues) => {
-    const severities = uniq(issues.map((x) => x.severity)).sort(
-        compare.severities
-    );
-    const severityText = `${capitalize(severities[0])} severity:`; // only use the highest severity level (High, Medium, or Low)
+    // assume that the issues are already sorted in descending order of priority score
+    const severity = capitalize(issues[0].severity[0]); // only use the severity level of the highest-scored issue
+    const score = issues[0].priorityScore; // only use the priority score of the highest-scored issue
+    const severityText = `${severity}|${score}`;
     const padding = ' '
         .repeat(SEVERITY_PREFIX_PADDING)
         .slice(severityText.length);
