@@ -28,7 +28,7 @@ module.exports = class Snyk {
         ).orgs;
     }
 
-    async projects(orgId, selectedProjects) {
+    async projects(orgId, selectedProjects = []) {
         const projects = (
             await request({
                 url: `${baseUrl}/org/${orgId || this._orgId}/projects`,
