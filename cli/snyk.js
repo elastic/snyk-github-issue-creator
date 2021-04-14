@@ -29,13 +29,11 @@ module.exports = class Snyk {
     }
 
     async projects(orgId, selectedProjects = []) {
-        const projects = (
-            await request({
-                url: `${baseUrl}/org/${orgId || this._orgId}/projects`,
-                headers: this._headers,
-                json: true,
-            })
-        ).projects;
+        const { projects } = await request({
+            url: `${baseUrl}/org/${orgId || this._orgId}/projects`,
+            headers: this._headers,
+            json: true,
+        });
         return projects
             .map((project) => {
                 const { issueCountsBySeverity } = project;
