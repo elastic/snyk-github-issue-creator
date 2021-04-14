@@ -28,14 +28,25 @@ module.exports = class Snyk {
         ).orgs;
     }
 
-    async projects(orgId) {
-        return (
-            await request({
-                url: `${baseUrl}/org/${orgId || this._orgId}/projects`,
-                headers: this._headers,
-                json: true,
+    async projects(orgId, selectedProjects = []) {
+        const { projects } = await request({
+            url: `${baseUrl}/org/${orgId || this._orgId}/projects`,
+            headers: this._headers,
+            json: true,
+        });
+        return projects
+            .map((project) => {
+                const { issueCountsBySeverity } = project;
+                const { high, medium, low } = issueCountsBySeverity;
+                const issueCountTotal = high + medium + low;
+                return { ...project, issueCountTotal };
             })
-        ).projects;
+            .filter(({ id, isMonitored, issueCountTotal }) => {
+                if (selectedProjects.includes(id)) {
+                    return true;
+                }
+                return isMonitored;
+            });
     }
 
     async issues(projectId) {

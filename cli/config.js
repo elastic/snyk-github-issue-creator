@@ -137,21 +137,33 @@ exports.init = async (args) => {
     if ('snykProjects' in args || 'stdin' in args) {
         conf.snykProjects = list(snykProjects);
     } else {
+        const choices = (await snyk.projects(conf.snykOrg, snykProjects))
+            .map(({ id, name, isMonitored, issueCountTotal }) => {
+                const message = isMonitored
+                    ? `${name} (${issueCountTotal} issues)`
+                    : `[Inactive project] ${name}`;
+                return { name: id, message, isMonitored };
+            })
+            .sort((choice1, choice2) => {
+                if (choice1.isMonitored !== choice2.isMonitored) {
+                    return choice1.isMonitored ? -1 : 1;
+                }
+                const { message: a } = choice1;
+                const { message: b } = choice2;
+                return a < b ? -1 : a > b ? 1 : 0;
+            });
+        // if any projects do not exist, filter those out the initial choices
+        const initial = snykProjects.filter((id) =>
+            choices.some((choice) => id === choice.name)
+        );
         Object.assign(
             conf,
             await prompt({
                 type: 'multiselect',
                 name: 'snykProjects',
                 message: 'Snyk project UUIDs',
-                choices: (await snyk.projects(conf.snykOrg))
-                    .map((p) => ({
-                        name: p.id,
-                        message: p.name,
-                    }))
-                    .sort(({ message: a }, { message: b }) =>
-                        a < b ? -1 : a > b ? 1 : 0
-                    ),
-                initial: snykProjects,
+                choices,
+                initial,
             })
         );
     }
