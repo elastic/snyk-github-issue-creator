@@ -103,7 +103,7 @@ async function createIssues() {
     let issues = flatten(projectIssues).sort(
         (a, b) =>
             b.priorityScore - a.priorityScore || // descending priority score
-            compare.severities(a.severity, b.severity) || // descending severity (High, then Medium, then Low)
+            compare.severities(a.severity, b.severity) || // descending severity (Critical, then High, then Medium, then Low)
             compare.text(a.package, b.package) || // ascending package name
             compare.versions(a.version, b.version) || // descending package version
             compare.text(a.title, b.title) || // ascending vulnerability title

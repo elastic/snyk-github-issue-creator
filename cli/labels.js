@@ -8,6 +8,10 @@ const LABELS = {
         description: 'Issue reported by Snyk Open Source scanner',
         color: '70389f',
     },
+    'severity:critical': {
+        description: 'Critical severity rating',
+        color: '990000',
+    },
     'severity:high': {
         description: 'High severity rating',
         color: 'b31a6b',

@@ -11,6 +11,10 @@ const compareText = (a, b) => a.toLowerCase().localeCompare(b.toLowerCase());
 const compareSeverities = (a, b) => {
     if (a === b) {
         return 0;
+    } else if (a === 'critical') {
+        return -1;
+    } else if (b === 'critical') {
+        return 1;
     } else if (a === 'high') {
         return -1;
     } else if (b === 'high') {

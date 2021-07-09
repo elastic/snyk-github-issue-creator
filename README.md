@@ -56,8 +56,8 @@ $ snyk-github-issue-creator [options]
     combined into a single GitHub issue.
 -   `--minimumSeverity`: If specified, vulnerabilities will only be
     displayed if they meet the minimum severity level. Valid options are
-    'low', 'medium', or 'high'. Default is 'medium' (if using `--auto`
-    and you have not saved this setting previously).
+    'low', 'medium', 'high', or 'critical'. Default is 'medium' (if using
+    `--auto` and you have not saved this setting previously).
 -   `--autoGenerate, --no-autoGenerate`: If specified, GitHub issues
     will be automatically generated without a confirmation prompt.
 -   `--stdin`: Read Snyk Organization UUID and Snyk Project UUID from

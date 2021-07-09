@@ -37,8 +37,8 @@ module.exports = class Snyk {
         return projects
             .map((project) => {
                 const { issueCountsBySeverity } = project;
-                const { high, medium, low } = issueCountsBySeverity;
-                const issueCountTotal = high + medium + low;
+                const { critical, high, medium, low } = issueCountsBySeverity;
+                const issueCountTotal = critical + high + medium + low;
                 return { ...project, issueCountTotal };
             })
             .filter(({ id, isMonitored, issueCountTotal }) => {
@@ -70,10 +70,12 @@ module.exports = class Snyk {
 };
 
 function getSeverities(minimumSeverity) {
-    if (minimumSeverity && minimumSeverity.toLowerCase() === 'high') {
-        return ['high'];
+    if (minimumSeverity && minimumSeverity.toLowerCase() === 'critical') {
+        return ['critical'];
+    } else if (minimumSeverity && minimumSeverity.toLowerCase() === 'high') {
+        return ['critical', 'high'];
     } else if (!minimumSeverity || minimumSeverity.toLowerCase() === 'medium') {
-        return ['high', 'medium'];
+        return ['critical', 'high', 'medium'];
     }
-    return ['high', 'medium', 'low'];
+    return ['critical', 'high', 'medium', 'low'];
 }
