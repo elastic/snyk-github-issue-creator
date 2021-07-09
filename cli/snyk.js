@@ -71,7 +71,7 @@ module.exports = class Snyk {
 
 function getSeverities(minimumSeverity) {
     if (minimumSeverity && minimumSeverity.toLowerCase() === 'critical') {
-        return ['critical', 'high'];
+        return ['critical'];
     } else if (minimumSeverity && minimumSeverity.toLowerCase() === 'high') {
         return ['critical', 'high'];
     } else if (!minimumSeverity || minimumSeverity.toLowerCase() === 'medium') {
