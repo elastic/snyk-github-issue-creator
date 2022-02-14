@@ -9,7 +9,6 @@ const {
     uniq,
     getProjectName,
     getUniqueProjectNamePrefixes,
-    getGraph,
 } = require('./utils');
 
 // Longest possible severity string. Each vulnerability in the prompt has a
@@ -119,9 +118,6 @@ const getBatchIssue = async (issues) => {
 <summary>${i + 1}. ${issue.title} in ${issue.package} ${issue.version} (${
                             issue.id
                         })</summary>
-
-## Detailed paths
-${getGraph(issue, '* ', showFullManifest)}
 
 ${issue.description}
 - [${issue.id}](${issue.url})

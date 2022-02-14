@@ -15,7 +15,6 @@ const {
     capitalize,
     compare,
     getProjectName,
-    getGraph,
     uniq,
 } = require('./utils');
 const Snyk = require('./snyk');
@@ -88,27 +87,21 @@ async function createIssues() {
     const projects = await snyk.projects();
 
     const projectIssues = await Promise.all(
-        conf.snykProjects.map((snykProject) =>
-            snyk.issues(snykProject).then((issues) => {
-                // only return vulnerabilities; add the project to each vulnerability object
-                const project = projects.find((x) => x.id === snykProject);
-                return issues.vulnerabilities.map((x) => ({
-                    ...x,
-                    project,
-                }));
-            })
-        )
+        conf.snykProjects.map(async (snykProject) => {
+            const issues = await snyk.issues(snykProject);
+            // only return vulnerabilities; add the project to each vulnerability object
+            const project = projects.find((x) => x.id === snykProject);
+            return issues.map((x) => ({...x, project}));
+        })
     );
 
     let issues = flatten(projectIssues).sort(
         (a, b) =>
-            b.priorityScore - a.priorityScore || // descending priority score
-            compare.severities(a.severity, b.severity) || // descending severity (Critical, then High, then Medium, then Low)
-            compare.text(a.package, b.package) || // ascending package name
-            compare.versions(a.version, b.version) || // descending package version
-            compare.text(a.title, b.title) || // ascending vulnerability title
-            compare.text(a.project.name, b.project.name) || // ascending project name
-            compare.arrays(a.from, b.from) // ascending paths
+            b.priority.score - a.priority.score || // descending priority score
+            compare.severities(a.issueData.severity, b.issueData.severity) || // descending severity (Critical, then High, then Medium, then Low)
+            compare.text(a.pkgName, b.pkgName) || // ascending package name
+            compare.text(a.issueData.title, b.issueData.title) || // ascending vulnerability title
+            compare.text(a.project.name, b.project.name) // ascending project name
     );
 
     if (issues.length === 0) {
@@ -117,15 +110,13 @@ async function createIssues() {
     }
 
     const reduced = issues.reduce((acc, cur) => {
-        const { id, from: paths, project, version } = cur;
-        const key = `${id}/${version}`;
+        const { id, from: paths, project, pkgVersions } = cur;
+        const key = `${id}/${pkgVersions.join('+')}`;
         if (!acc[key]) {
-            cur.from = [];
             cur.projects = [];
             delete cur.project;
             acc[key] = cur;
         }
-        acc[key].from.push({ project, paths });
         acc[key].projects = uniq(acc[key].projects.concat([project]));
         return acc;
     }, {});
@@ -180,17 +171,16 @@ async function createIssues() {
     );
     issues.forEach((issue, i) => {
         const {
-            severity,
+            issueData: { severity, title },
             priorityScore,
-            package: pkg,
-            version,
-            title,
+            pkgName,
+            pkgVersions,
             id,
         } = issue;
         const severityPrefix = `${capitalize(severity[0])}|${priorityScore}`;
         const num = i + 1;
-        const description = `${num}. ${severityPrefix} - ${pkg} ${version} - ${title} - ${id}`;
-        console.log(`${description}\n${getGraph(issue, ' * ', true)}\n`);
+        const description = `${num}. ${severityPrefix} - ${pkgName} ${pkgVersions.join('+')} - ${title} - ${id}`;
+        console.log(`${description}\n`);
         issueQuestions.push({
             type: 'confirm',
             name: `question-${ctr++}`,
@@ -225,10 +215,6 @@ function getIssueBody(issue) {
     return `This issue has been created automatically by a source code scanner
 
 ## Third party component with known security vulnerabilities
-
-Introduced to ${getProjectName(projects)} through:
-
-${getGraph(issue, '* ')}
 
 ${description}
 - [SNYKUID:${id}](${url})
