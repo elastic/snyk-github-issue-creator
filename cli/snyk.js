@@ -56,6 +56,7 @@ module.exports = class Snyk {
                 url: `${baseUrl}/org/${this._orgId}/project/${projectId}/aggregated-issues`,
                 headers: this._headers,
                 body: {
+                    includeDescription: true,
                     filters: {
                         severities: getSeverities(this._minimumSeverity),
                         types: ['vuln'],
