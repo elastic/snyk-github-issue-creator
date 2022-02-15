@@ -35,7 +35,7 @@ const getLabels = (issueOrIssues) => {
     labels.push('snyk');
     if (conf.severityLabel) {
         const issues = Array.isArray(issueOrIssues) ? issueOrIssues : [];
-        const severities = uniq(issues.map((x) => `severity:${x.severity}`));
+        const severities = uniq(issues.map((x) => `severity:${x.issueData.severity}`));
         labels = labels.concat(severities);
     }
     return labels;

@@ -7,6 +7,7 @@ const { throttling } = require('@octokit/plugin-throttling');
 const { prompt } = require('enquirer');
 const chalk = require('chalk');
 const flatten = require('lodash.flatten');
+const ora = require('ora');
 
 const { getBatchProps, getBatchIssue } = require('./batch');
 const { init: initConfig, conf } = require('./config');
@@ -15,6 +16,7 @@ const {
     capitalize,
     compare,
     getProjectName,
+    getGraph,
     uniq,
 } = require('./utils');
 const Snyk = require('./snyk');
@@ -61,10 +63,13 @@ let octokit;
 
 async function createIssues() {
     // Display confirmation when creating issues in public GitHub repo
+    let spinner = ora('Loading GitHub repositories').start();
     const repo = await octokit.repos.get({
         owner: conf.ghOwner,
         repo: conf.ghRepo,
     });
+    spinner.succeed();
+
     if (!repo.data.private) {
         const response = await prompt({
             type: 'confirm',
@@ -84,48 +89,94 @@ async function createIssues() {
         orgId: conf.snykOrg,
         minimumSeverity: conf.minimumSeverity,
     });
+
+    spinner = ora('Loading Snyk projects').start();
     const projects = await snyk.projects();
+    spinner.succeed();
 
-    const projectIssues = await Promise.all(
-        conf.snykProjects.map(async (snykProject) => {
-            const issues = await snyk.issues(snykProject);
-            // only return vulnerabilities; add the project to each vulnerability object
-            const project = projects.find((x) => x.id === snykProject);
-            return issues.map((x) => ({...x, project}));
-        })
-    );
+    spinner = ora('Loading Snyk issues').start();
+    const projectIssues = [];
+    for (const snykProject of conf.snykProjects) {
+        const project = projects.find((x) => x.id === snykProject);
+        const issues = await snyk.issues(snykProject);
 
+        for (const issue of issues) {
+            let page = issue.links.paths;
+
+            delete issue.links; // no need for this property
+
+            issue.project = project;
+            issue.paths = [];
+
+            // Populate each issue with all dependency paths by crawling the API links
+            while (page !== null) {
+                const result = await snyk.get(page);
+                // result.paths example:
+                // [
+                //     [
+                //       { name: 'd3-scale', version: '1.0.7' },
+                //       { name: 'd3-color', version: '1.4.1' }
+                //     ],
+                //     [
+                //       { name: 'react-vis', version: '1.8.2' },
+                //       { name: 'd3-color', version: '1.4.1' }
+                //     ],
+                //     [
+                //       { name: 'd3-interpolate', version: '3.0.1' },
+                //       { name: 'd3-color', version: '3.0.1' }
+                //     ],
+                //     [
+                //       { name: 'd3-scale', version: '1.0.7' },
+                //       { name: 'd3-interpolate', version: '1.4.0' },
+                //       { name: 'd3-color', version: '1.4.1' }
+                //     ]
+                // ]
+                issue.paths = issue.paths.concat(result.paths);
+                page = result.links.next ?? null;
+            }
+
+            projectIssues.push(issue);
+        }
+    }
+    spinner.succeed();
+
+    spinner = ora('Processing issues').start();
     let issues = flatten(projectIssues).sort(
         (a, b) =>
             b.priority.score - a.priority.score || // descending priority score
             compare.severities(a.issueData.severity, b.issueData.severity) || // descending severity (Critical, then High, then Medium, then Low)
             compare.text(a.pkgName, b.pkgName) || // ascending package name
+            compare.versionArrays(a.pkgVersions, b.pkgVersions) || // descending package version
             compare.text(a.issueData.title, b.issueData.title) || // ascending vulnerability title
             compare.text(a.project.name, b.project.name) // ascending project name
     );
 
     if (issues.length === 0) {
+        spinner.stop();
         console.log(chalk.green('No issues to create'));
-        return process.exit(0);
+        process.exit(0);
     }
 
     const reduced = issues.reduce((acc, cur) => {
-        const { id, from: paths, project, pkgVersions } = cur;
-        const key = `${id}/${pkgVersions.join('+')}`;
+        const { id, paths, project, pkgVersions } = cur;
+        const key = `${id}/${pkgVersions.join('/')}`; // TODO: Should we loop over pkgVersions and create unique keys for each version instead?
         if (!acc[key]) {
+            cur.from = [];
+            delete cur.paths;
             cur.projects = [];
             delete cur.project;
             acc[key] = cur;
         }
-        acc[key].projects = uniq(acc[key].projects.concat([project]));
+        acc[key].from.push({ project, paths });
+        acc[key].projects = uniq(acc[key].projects.concat(project));
         return acc;
     }, {});
     issues = Object.values(reduced);
+    spinner.succeed();
 
-    const batchProps = conf.batch && (await getBatchProps(issues));
-    if (batchProps) {
+    if (conf.batch) {
         // filter down to the package that was picked
-        issues = batchProps.issues;
+        issues = (await getBatchProps(issues)).issues;
     }
 
     if (conf.autoGenerate) {
@@ -159,7 +210,7 @@ async function createIssues() {
 
             await generateGhIssues(issues, new Map(existingIssues));
         }
-        return process.exit(0);
+        process.exit(0);
     }
 
     const issueQuestions = [];
@@ -171,16 +222,16 @@ async function createIssues() {
     );
     issues.forEach((issue, i) => {
         const {
-            issueData: { severity, title },
-            priorityScore,
+            id,
             pkgName,
             pkgVersions,
-            id,
+            priorityScore,
+            issueData: { title, severity },
         } = issue;
         const severityPrefix = `${capitalize(severity[0])}|${priorityScore}`;
         const num = i + 1;
-        const description = `${num}. ${severityPrefix} - ${pkgName} ${pkgVersions.join('+')} - ${title} - ${id}`;
-        console.log(`${description}\n`);
+        const description = `${num}. ${severityPrefix} - ${pkgName} ${pkgVersions.join('/')} - ${title} - ${id}`;
+        console.log(`${description}\n${getGraph(issue, ' * ', true)}\n`);
         issueQuestions.push({
             type: 'confirm',
             name: `question-${ctr++}`,
@@ -205,16 +256,20 @@ async function createIssues() {
 // Must include Snyk id to distinguish between issues within the same component, that might have different mitigation
 // and/or exploitability
 function getIssueTitle(issue) {
-    const { projects, title, package: packageName, version, id } = issue;
+    const { id, pkgName, pkgVersions, issueData: { title }, projects } = issue;
     const projectName = getProjectName(projects);
-    return `${projectName} - ${title} in ${packageName} ${version} - ${id}`;
+    return `${projectName} - ${title} in ${pkgName} ${pkgVersions.join('/')} - ${id}`;
 }
 
 function getIssueBody(issue) {
-    const { projects, description, id, url } = issue;
+    const { id, issueData: { url, description }, projects } = issue;
     return `This issue has been created automatically by a source code scanner
 
 ## Third party component with known security vulnerabilities
+
+Introduced to ${getProjectName(projects)} through:
+
+${getGraph(issue, '* ')}
 
 ${description}
 - [SNYKUID:${id}](${url})

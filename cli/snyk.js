@@ -67,6 +67,17 @@ module.exports = class Snyk {
             })
         ).issues;
     }
+
+    async get(url) {
+        return (
+            await request({
+                method: 'get',
+                url,
+                headers: this._headers,
+                json: true,
+            })
+        );
+    }
 };
 
 function getSeverities(minimumSeverity) {
