@@ -120,8 +120,8 @@ const getBatchIssue = async (issues) => {
 ## Detailed paths
 ${getGraph(issue, '* ', showFullManifest)}
 
-${issue.description}
-- [${issue.id}](${issue.url})
+${issue.issueData.description}
+- [${issue.id}](${issue.issueData.url})
 </details>`
                 )
                 .join('');
