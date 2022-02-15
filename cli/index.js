@@ -140,7 +140,6 @@ async function createIssues() {
     }
     spinner.succeed();
 
-    spinner = ora('Processing issues').start();
     let issues = flatten(projectIssues).sort(
         (a, b) =>
             b.priority.score - a.priority.score || // descending priority score
@@ -152,27 +151,25 @@ async function createIssues() {
     );
 
     if (issues.length === 0) {
-        spinner.stop();
         console.log(chalk.green('No issues to create'));
         process.exit(0);
     }
 
+    // Combine duplicate issues across different projects into a single issue with an array of it's `projects` and an array of paths grouped by project (calld `from`)
     const reduced = issues.reduce((acc, cur) => {
-        const { id, paths, project, pkgVersions } = cur;
-        const key = `${id}/${pkgVersions.join('/')}`; // TODO: Should we loop over pkgVersions and create unique keys for each version instead?
-        if (!acc[key]) {
+        const { id, paths, project } = cur;
+        if (!acc[id]) {
             cur.from = [];
             delete cur.paths;
             cur.projects = [];
             delete cur.project;
-            acc[key] = cur;
+            acc[id] = cur;
         }
-        acc[key].from.push({ project, paths });
-        acc[key].projects = uniq(acc[key].projects.concat(project));
+        acc[id].from.push({ project, paths });
+        acc[id].projects = uniq(acc[id].projects.concat(project));
         return acc;
     }, {});
     issues = Object.values(reduced);
-    spinner.succeed();
 
     if (conf.batch) {
         // filter down to the package that was picked
