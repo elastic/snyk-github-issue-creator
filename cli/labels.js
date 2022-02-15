@@ -34,7 +34,7 @@ const getLabels = (issueOrIssues) => {
     let labels = [...conf.ghLabels];
     labels.push('snyk');
     if (conf.severityLabel) {
-        const issues = Array.isArray(issueOrIssues) ? issueOrIssues : [];
+        const issues = Array.isArray(issueOrIssues) ? issueOrIssues : [issueOrIssues];
         const severities = uniq(issues.map((x) => `severity:${x.issueData.severity}`));
         labels = labels.concat(severities);
     }
