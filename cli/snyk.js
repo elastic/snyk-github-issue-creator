@@ -69,7 +69,7 @@ module.exports = class Snyk {
         ).issues;
     }
 
-    async get(url) {
+    async getLink(url) {
         return (
             await request({
                 method: 'get',

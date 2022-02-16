@@ -110,7 +110,7 @@ async function createIssues() {
 
             // Populate each issue with all dependency paths by crawling the API links
             while (page !== null) {
-                const result = await snyk.get(page);
+                const result = await snyk.getLink(page);
                 // result.paths example:
                 // [
                 //     [
