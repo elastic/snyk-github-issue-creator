@@ -53,9 +53,10 @@ module.exports = class Snyk {
         return (
             await request({
                 method: 'post',
-                url: `${baseUrl}/org/${this._orgId}/project/${projectId}/issues`,
+                url: `${baseUrl}/org/${this._orgId}/project/${projectId}/aggregated-issues`,
                 headers: this._headers,
                 body: {
+                    includeDescription: true,
                     filters: {
                         severities: getSeverities(this._minimumSeverity),
                         types: ['vuln'],
@@ -66,6 +67,17 @@ module.exports = class Snyk {
                 json: true,
             })
         ).issues;
+    }
+
+    async getLink(url) {
+        return (
+            await request({
+                method: 'get',
+                url,
+                headers: this._headers,
+                json: true,
+            })
+        );
     }
 };
 
