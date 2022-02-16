@@ -155,7 +155,7 @@ async function createIssues() {
         process.exit(0);
     }
 
-    // Combine duplicate issues across different projects into a single issue with an array of it's `projects` and an array of paths grouped by project (calld `from`)
+    // Combine duplicate issues across different projects into a single issue with an array of its `projects` and an array of paths grouped by project (called `from`)
     const reduced = issues.reduce((acc, cur) => {
         const { id, paths, project } = cur;
         if (!acc[id]) {
