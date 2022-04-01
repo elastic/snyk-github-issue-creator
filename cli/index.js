@@ -18,6 +18,7 @@ const {
     getProjectName,
     getGraph,
     uniq,
+    getIdentifiers,
 } = require('./utils');
 const Snyk = require('./snyk');
 
@@ -269,8 +270,8 @@ Introduced to ${getProjectName(projects)} through:
 ${getGraph(issue, '* ')}
 
 ${description}
-- [SNYKUID:${id}](${url})
-`;
+- [${id}](${url})
+${getIdentifiers(issue)}`;
 }
 
 async function generateGhIssues(issues, existingMap = new Map()) {

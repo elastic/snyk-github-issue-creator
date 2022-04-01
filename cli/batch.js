@@ -10,6 +10,7 @@ const {
     getProjectName,
     getUniqueProjectNamePrefixes,
     getGraph,
+    getIdentifiers,
 } = require('./utils');
 
 // Longest possible severity string. Each vulnerability in the prompt has a
@@ -122,7 +123,7 @@ ${getGraph(issue, '* ', showFullManifest)}
 
 ${issue.issueData.description}
 - [${issue.id}](${issue.issueData.url})
-</details>`
+${getIdentifiers(issue)}</details>`
                 )
                 .join('');
             return '\r\n\r\n' + header + body;
