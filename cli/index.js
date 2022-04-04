@@ -269,8 +269,18 @@ Introduced to ${getProjectName(projects)} through:
 ${getGraph(issue, '* ')}
 
 ${description}
-- [SNYKUID:${id}](${url})
-`;
+- [${id}](${url})
+${getIdentifiers(issue)}`;
+}
+
+function getIdentifiers(issue) {
+    let s = '';
+    for (const ids of Object.values(issue.issueData.identifiers)) {
+        for (const id of ids) {
+            s += `- ${id}\r\n`;
+        }
+    }
+    return s;
 }
 
 async function generateGhIssues(issues, existingMap = new Map()) {

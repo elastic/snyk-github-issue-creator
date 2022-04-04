@@ -113,9 +113,15 @@ const getBatchIssue = async (issues) => {
                 .map(
                     (issue, i) =>
                         `\r\n\r\n<details>
-<summary>${i + 1}. ${issue.issueData.title} in ${issue.pkgName} ${issue.pkgVersions.join('/')} (${
-                            issue.id
-                        })</summary>
+<summary>${i + 1}. ${issue.issueData.title} in ${
+                            issue.pkgName
+                        } ${issue.pkgVersions.join('/')} (${[issue.id]
+                            .concat(
+                                Object.values(
+                                    issue.issueData.identifiers
+                                ).flat()
+                            )
+                            .join(', ')})</summary>
 
 ## Detailed paths
 ${getGraph(issue, '* ', showFullManifest)}
