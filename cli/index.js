@@ -276,7 +276,6 @@ ${getIdentifiers(issue)}`;
 function getIdentifiers(issue) {
     let s = '';
     for (const ids of Object.values(issue.issueData.identifiers)) {
-        if (ids.length === 0) continue;
         for (const id of ids) {
             s += `- ${id}\r\n`;
         }
