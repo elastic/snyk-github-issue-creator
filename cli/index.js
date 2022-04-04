@@ -18,7 +18,6 @@ const {
     getProjectName,
     getGraph,
     uniq,
-    getIdentifiers,
 } = require('./utils');
 const Snyk = require('./snyk');
 
@@ -272,6 +271,17 @@ ${getGraph(issue, '* ')}
 ${description}
 - [${id}](${url})
 ${getIdentifiers(issue)}`;
+}
+
+function getIdentifiers(issue) {
+    let s = '';
+    for (const ids of Object.values(issue.issueData.identifiers)) {
+        if (ids.length === 0) continue;
+        for (const id of ids) {
+            s += `- ${id}\r\n`;
+        }
+    }
+    return s;
 }
 
 async function generateGhIssues(issues, existingMap = new Map()) {

@@ -120,17 +120,6 @@ const getGraph = (issue, prefix, showFullManifest) => {
         .join('\r\n');
 };
 
-const getIdentifiers = (issue) => {
-    let s = '';
-    for (const ids of Object.values(issue.issueData.identifiers)) {
-        if (ids.length === 0) continue;
-        for (const id of ids) {
-            s += `- ${id}\r\n`;
-        }
-    }
-    return s;
-};
-
 module.exports = {
     capitalize,
     compare: {
@@ -144,5 +133,4 @@ module.exports = {
     getProjectName,
     getUniqueProjectNamePrefixes,
     getGraph,
-    getIdentifiers,
 };
