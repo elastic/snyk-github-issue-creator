@@ -99,7 +99,7 @@ exports.init = async (args) => {
         }
     } else {
         snykOrg = getConfig('snykOrg');
-        snykProjects = getConfig('snykProjects');
+        snykProjects = getConfig('snykProjects') || [];
     }
 
     Object.assign(
