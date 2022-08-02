@@ -171,81 +171,101 @@ async function createIssues() {
     }, {});
     issues = Object.values(reduced);
 
-    if (conf.batch) {
-        // filter down to the package that was picked
-        issues = (await getBatchProps(issues)).issues;
-    }
-
-    if (conf.autoGenerate) {
+    let continuePrompting = true;
+    while (continuePrompting) {
+        let issuesToPromptFor = [...issues];
         if (conf.batch) {
-            console.log(
-                chalk.grey(
-                    `Auto-generating a single GitHub issue for ${
-                        issues.length
-                    } issue${issues.length > 1 ? 's' : ''}`
-                )
-            );
-            await generateGhIssues(issues);
-        } else {
-            console.log(
-                chalk.grey(
-                    `Auto-generating ${issues.length} GitHub issue${
-                        issues.length > 1 ? 's' : ''
-                    }...`
-                )
-            );
-
-            // retrieve issue IDs already created in GitHub
-            const existingIssues = await octokit.paginate(
-                `GET /search/issues?q=repo%3A${conf.ghOwner}/${conf.ghRepo}+is%3Aissue+label%3Asnyk`,
-                (response) =>
-                    response.data.map((existingIssue) => [
-                        existingIssue.title,
-                        existingIssue.number,
-                    ])
-            );
-
-            await generateGhIssues(issues, new Map(existingIssues));
+            // filter down to the package that was picked
+            issuesToPromptFor = (await getBatchProps(issues)).issues;
         }
-        process.exit(0);
-    }
 
-    const issueQuestions = [];
+        if (conf.autoGenerate) {
+            if (conf.batch) {
+                console.log(
+                    chalk.grey(
+                        `Auto-generating a single GitHub issue for ${
+                            issuesToPromptFor.length
+                        } issue${issuesToPromptFor.length > 1 ? 's' : ''}`
+                    )
+                );
+                await generateGhIssues(issuesToPromptFor);
+            } else {
+                console.log(
+                    chalk.grey(
+                        `Auto-generating ${
+                            issuesToPromptFor.length
+                        } GitHub issue${
+                            issuesToPromptFor.length > 1 ? 's' : ''
+                        }...`
+                    )
+                );
 
-    let ctr = 0;
-    console.log(`Found ${issues.length} vulnerabilities...`);
-    console.log(
-        `Format: [Severity]|[Priority score] - [Package name] [Package Version] - [Vuln title] - [Vuln ID]\n`
-    );
-    issues.forEach((issue, i) => {
-        const {
-            id,
-            pkgName,
-            pkgVersions,
-            priorityScore,
-            issueData: { title, severity },
-        } = issue;
-        const severityPrefix = `${capitalize(severity[0])}|${priorityScore}`;
-        const num = i + 1;
-        const description = `${num}. ${severityPrefix} - ${pkgName} ${pkgVersions.join('/')} - ${title} - ${id}`;
-        console.log(`${description}\n${getGraph(issue, ' * ', true)}\n`);
-        issueQuestions.push({
-            type: 'confirm',
-            name: `question-${ctr++}`,
-            message: conf.batch
-                ? `Add "${description}" to batch?`
-                : `Create GitHub issue for ${description}?`,
-            default: false,
+                // retrieve issue IDs already created in GitHub
+                const existingIssues = await octokit.paginate(
+                    `GET /search/issues?q=repo%3A${conf.ghOwner}/${conf.ghRepo}+is%3Aissue+label%3Asnyk`,
+                    (response) =>
+                        response.data.map((existingIssue) => [
+                            existingIssue.title,
+                            existingIssue.number,
+                        ])
+                );
+
+                await generateGhIssues(
+                    issuesToPromptFor,
+                    new Map(existingIssues)
+                );
+            }
+            process.exit(0);
+        }
+
+        const issueQuestions = [];
+
+        let ctr = 0;
+        console.log(`Found ${issuesToPromptFor.length} vulnerabilities...`);
+        console.log(
+            `Format: [Severity]|[Priority score] - [Package name] [Package Version] - [Vuln title] - [Vuln ID]\n`
+        );
+        issuesToPromptFor.forEach((issue, i) => {
+            const {
+                id,
+                pkgName,
+                pkgVersions,
+                priorityScore,
+                issueData: { title, severity },
+            } = issue;
+            const severityPrefix = `${capitalize(
+                severity[0]
+            )}|${priorityScore}`;
+            const num = i + 1;
+            const description = `${num}. ${severityPrefix} - ${pkgName} ${pkgVersions.join(
+                '/'
+            )} - ${title} - ${id}`;
+            console.log(`${description}\n${getGraph(issue, ' * ', true)}\n`);
+            issueQuestions.push({
+                type: 'confirm',
+                name: `question-${ctr++}`,
+                message: conf.batch
+                    ? `Add "${description}" to batch?`
+                    : `Create GitHub issue for ${description}?`,
+                default: false,
+            });
         });
-    });
 
-    const issueAnswers = await prompt(issueQuestions);
+        const issueAnswers = await prompt(issueQuestions);
 
-    const issuesToAction = issues.filter(
-        (_issue, i) => issueAnswers[`question-${i}`]
-    );
+        const issuesToAction = issuesToPromptFor.filter(
+            (_issue, i) => issueAnswers[`question-${i}`]
+        );
 
-    await generateGhIssues(issuesToAction);
+        await generateGhIssues(issuesToAction);
+        continuePrompting = (
+            await prompt({
+                type: 'confirm',
+                name: 'continuePrompting',
+                message: 'Pick another issue?',
+            })
+        ).continuePrompting;
+    }
 
     process.exit(0);
 }
@@ -253,13 +273,25 @@ async function createIssues() {
 // Must include Snyk id to distinguish between issues within the same component, that might have different mitigation
 // and/or exploitability
 function getIssueTitle(issue) {
-    const { id, pkgName, pkgVersions, issueData: { title }, projects } = issue;
+    const {
+        id,
+        pkgName,
+        pkgVersions,
+        issueData: { title },
+        projects,
+    } = issue;
     const projectName = getProjectName(projects);
-    return `${projectName} - ${title} in ${pkgName} ${pkgVersions.join('/')} - ${id}`;
+    return `${projectName} - ${title} in ${pkgName} ${pkgVersions.join(
+        '/'
+    )} - ${id}`;
 }
 
 function getIssueBody(issue) {
-    const { id, issueData: { url, description }, projects } = issue;
+    const {
+        id,
+        issueData: { url, description },
+        projects,
+    } = issue;
     return `This issue has been created automatically by a source code scanner
 
 ## Third party component with known security vulnerabilities
