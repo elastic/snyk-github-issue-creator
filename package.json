@@ -16,8 +16,8 @@
     "author": "pierre-ernst",
     "license": "ISC",
     "dependencies": {
-        "@octokit/plugin-throttling": "^3.3.3",
-        "@octokit/rest": "^17.11.2",
+        "@octokit/plugin-throttling": "^4.2.0",
+        "@octokit/rest": "^19.0.4",
         "chalk": "^3.0.0",
         "configstore": "^5.0.1",
         "enquirer": "^2.3.6",

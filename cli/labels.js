@@ -34,8 +34,12 @@ const getLabels = (issueOrIssues) => {
     let labels = [...conf.ghLabels];
     labels.push('snyk');
     if (conf.severityLabel) {
-        const issues = Array.isArray(issueOrIssues) ? issueOrIssues : [issueOrIssues];
-        const severities = uniq(issues.map((x) => `severity:${x.issueData.severity}`));
+        const issues = Array.isArray(issueOrIssues)
+            ? issueOrIssues
+            : [issueOrIssues];
+        const severities = uniq(
+            issues.map((x) => `severity:${x.issueData.severity}`)
+        );
         labels = labels.concat(severities);
     }
     return labels;
@@ -47,7 +51,7 @@ const getLabelAttributes = (name) => {
 
 const ensureLabelsAreCreated = async (octokit, ghOwner, ghRepo, issues) => {
     const labels = getLabels(issues);
-    const response = await octokit.issues.listLabelsForRepo({
+    const response = await octokit.rest.issues.listLabelsForRepo({
         owner: ghOwner,
         repo: ghRepo,
         per_page: 100,
@@ -60,7 +64,7 @@ const ensureLabelsAreCreated = async (octokit, ghOwner, ghRepo, issues) => {
 
     await Promise.all(
         labelsToCreate.map((name) =>
-            octokit.issues
+            octokit.rest.issues
                 .createLabel({
                     owner: ghOwner,
                     repo: ghRepo,

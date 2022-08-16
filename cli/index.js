@@ -64,7 +64,7 @@ let octokit;
 async function createIssues() {
     // Display confirmation when creating issues in public GitHub repo
     let spinner = ora('Loading GitHub repositories').start();
-    const repo = await octokit.repos.get({
+    const repo = await octokit.rest.repos.get({
         owner: conf.ghOwner,
         repo: conf.ghRepo,
     });
@@ -324,7 +324,7 @@ async function generateGhIssues(issues, existingMap = new Map()) {
         const { title, body } = await getBatchIssue(issues);
 
         ghNewIssues = [
-            await octokit.issues.create({
+            await octokit.rest.issues.create({
                 owner: conf.ghOwner,
                 repo: conf.ghRepo,
                 title,
@@ -342,7 +342,7 @@ async function generateGhIssues(issues, existingMap = new Map()) {
 
         ghNewIssues = await Promise.all(
             newIssues.map((issue) =>
-                octokit.issues.create({
+                octokit.rest.issues.create({
                     owner: conf.ghOwner,
                     repo: conf.ghRepo,
                     title: getIssueTitle(issue),
@@ -354,7 +354,7 @@ async function generateGhIssues(issues, existingMap = new Map()) {
 
         ghUpdatedIssues = await Promise.all(
             updateIssues.map((issue) =>
-                octokit.issues.update({
+                octokit.rest.issues.update({
                     owner: conf.ghOwner,
                     repo: conf.ghRepo,
                     issue_number: existingMap.get(getIssueTitle(issue)),
