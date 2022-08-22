@@ -15,7 +15,7 @@ Usage: snyk-github-issue-creator [options]
 
 Normal options:
 
---auto           Re-use previously saved configuration without asking.
+--yes, -y        Re-use previously saved configuration without asking.
 --help, -h       Show this help.
 --version, -v    Show release version.
 
@@ -45,7 +45,7 @@ Advanced options:
                  If specified, vulnerabilities will only be displayed if they
                  meet the minimum severity level. Valid options are 'low',
                  'medium', 'high', or 'critical'. Default is 'medium' (if using
-                 --auto and you have not saved this setting previously).
+                 --yes and you have not saved this setting previously).
 --autoGenerate, --no-autoGenerate
                  If specified, GitHub issues will be automatically generated
                  without a confirmation prompt.
@@ -67,7 +67,8 @@ exports.init = async (args) => {
     } else if (args.version || args.v) {
         console.log(pkgVersion);
         return process.exit(0);
-    } else if (args.auto) {
+    } else if (args.auto || args.yes || args.y) {
+        // --auto is deprecated
         Object.assign(conf, config.all);
         return;
     }

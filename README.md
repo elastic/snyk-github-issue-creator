@@ -32,7 +32,7 @@ $ snyk-github-issue-creator [options]
 
 **Normal options:**
 
--   `--auto`: Re-use previously saved configuration without asking.
+-   `--yes, -y`: Re-use previously saved configuration without asking.
 -   `--help, -h`: Show the help.
 -   `--version, -v`: Show release version.
 
@@ -57,7 +57,7 @@ $ snyk-github-issue-creator [options]
 -   `--minimumSeverity`: If specified, vulnerabilities will only be
     displayed if they meet the minimum severity level. Valid options are
     'low', 'medium', 'high', or 'critical'. Default is 'medium' (if using
-    `--auto` and you have not saved this setting previously).
+    `--yes` and you have not saved this setting previously).
 -   `--autoGenerate, --no-autoGenerate`: If specified, GitHub issues
     will be automatically generated without a confirmation prompt.
 -   `--stdin`: Read Snyk Organization UUID and Snyk Project UUID from
@@ -105,7 +105,7 @@ setup questions:
     generated without a confirmation prompt (e.g. if you want to run
     this as part of a CI pipeline).
 -   **Save settings**: If specified, you can skip these questions the
-    next time you run the program by using the `--auto` command line
+    next time you run the program by using the `--yes` command line
     flag.
 
 ### Picking Vulnerabilities
