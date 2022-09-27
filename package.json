@@ -1,6 +1,6 @@
 {
     "name": "@elastic/snyk-github-issue-creator",
-    "version": "1.7.0",
+    "version": "1.7.1",
     "description": "A CLI for creating GitHub issues based on vulnerabilities from your Snyk projects",
     "main": "index.js",
     "scripts": {
