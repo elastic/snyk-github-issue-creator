@@ -50,7 +50,7 @@ $ snyk-github-issue-creator [options]
 -   `--severityLabel, --no-severityLabel`: If specified, the GitHub
     issue will have severity label(s) added automatically.
 -   `--parseManifestName, --no-parseManifestName`: If specified, the
-    dependency paths will start with the manifest name instead of the
+   ssdependency paths will start with the manifest name instead of the
     project name.
 -   `--batch, --no-batch`: If specified, the selected findings will be
     combined into a single GitHub issue.
