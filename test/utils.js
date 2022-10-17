@@ -54,6 +54,11 @@ test('compare.versions', (t) => {
     t.equal(compare.versions('1.2.3', '1.2.3'), 0);
     t.equal(compare.versions('1.2.3', '1.2.4'), 1);
     t.equal(compare.versions('1.2.4', '1.2.3'), -1);
+
+    t.equal(compare.versions('1.2.3.4', '1.2.3.4'), 0);
+    t.equal(compare.versions('1.2.3.4', '1.2.4.5'), 1);
+    t.equal(compare.versions('1.2.3.5', '1.2.3.4'), -1);
+
     t.end();
 });
 

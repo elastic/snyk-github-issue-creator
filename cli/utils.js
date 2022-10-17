@@ -26,9 +26,20 @@ const compareSeverities = (a, b) => {
     }
 };
 
+// The semver package doesn't support version strings with four parts (e.g 1.2.3.4)
+// We hack by converting `1.2.3.4` to `1.2.3-4` where `4` is considered a pre-release version identifier, which semver supports.
+const fourPartVersionRegEx = /(\d+\.\d+\.\d+)\.(.*)/;
+const normalizeFourPartVersion = (version) => {
+    const match = version.match(fourPartVersionRegEx);
+    return match ? `${match[1]}-${match[2]}` : version;
+};
+
 // descending order
-const compareVersions = (a, b) =>
-    semver.lt(a, b) ? 1 : semver.gt(a, b) ? -1 : 0;
+const compareVersions = (a, b) => {
+    a = normalizeFourPartVersion(a);
+    b = normalizeFourPartVersion(b);
+    return semver.lt(a, b) ? 1 : semver.gt(a, b) ? -1 : 0;
+}
 
 // descending order
 const compareVersionArrays = (a, b) => {
