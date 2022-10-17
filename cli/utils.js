@@ -36,7 +36,7 @@ const compareVersionArrays = (a, b) => {
     b = b.sort(compareVersions);
     const min = Math.min(a.length, b.length);
     for (let i = 0; i < min; i++) {
-        const result = semver.lt(a[i], b[i]) ? 1 : semver.gt(a[i], b[i]) ? -1 : 0;
+        const result = compareVersions(a[i], b[i]);
         if (result !== 0) return result;
     }
     return 0;
