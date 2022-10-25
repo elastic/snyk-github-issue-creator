@@ -34,10 +34,22 @@ const normalizeFourPartVersion = (version) => {
     return match ? `${match[1]}-${match[2]}` : version;
 };
 
+const normalizeVersion = (version) => {
+    version = normalizeFourPartVersion(version);
+
+    const cleanedVersion = semver.clean(version);
+    if (cleanedVersion) return cleanedVersion;
+
+    const coercedVersion = semver.coerce(version);
+    if (coercedVersion) return coercedVersion.version;
+
+    return version;
+};
+
 // descending order
 const compareVersions = (a, b) => {
-    a = normalizeFourPartVersion(a);
-    b = normalizeFourPartVersion(b);
+    a = normalizeVersion(a);
+    b = normalizeVersion(b);
     return semver.lt(a, b) ? 1 : semver.gt(a, b) ? -1 : 0;
 }
 

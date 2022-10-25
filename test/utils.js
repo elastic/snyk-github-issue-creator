@@ -51,6 +51,14 @@ test('compare.severities', (t) => {
 });
 
 test('compare.versions', (t) => {
+    t.equal(compare.versions('1', '1'), 0);
+    t.equal(compare.versions('1', '2'), 1);
+    t.equal(compare.versions('2', '1'), -1);
+
+    t.equal(compare.versions('1.2', '1.2'), 0);
+    t.equal(compare.versions('1.2', '1.3'), 1);
+    t.equal(compare.versions('1.3', '1.2'), -1);
+
     t.equal(compare.versions('1.2.3', '1.2.3'), 0);
     t.equal(compare.versions('1.2.3', '1.2.4'), 1);
     t.equal(compare.versions('1.2.4', '1.2.3'), -1);
