@@ -1,9 +1,13 @@
 'use strict';
 
 const os = require('os');
+const { join } = require('path');
 const test = require('tape');
 
-const { init, conf } = require('../cli/config');
+const { init, conf, _test_configStore: configStore } = require('../cli/config');
+
+// Hack: override the internal path to the config file so we can use a different one for testing
+configStore.path = join(__dirname, 'configstore.json');
 
 test('should have empty conf by default', (t) => {
     t.deepEqual(conf, {});
@@ -49,6 +53,37 @@ test('should have empty conf by default', (t) => {
 
         await init({ [opt]: true });
     });
+});
+
+test('should read test-only configstore json file', async (t) => {
+    resetConf();
+    t.deepEqual(conf, {});
+    await init({ y: true });
+    t.deepEqual(conf, {
+        snykToken: '_configstore_snykToken_',
+        snykOrg: '_configstore_snykOrg_',
+        snykProjects: ['_configstore_snykProject1_', '_configstore_snykProject2_'],
+        ghPat: '_configstore_ghPat_',
+        ghOwner: '_configstore_owner_',
+        ghRepo: '_configstore_repo_',
+        projectName: '_configstore_projectName_',
+        ghLabels: ['_configstore_label1_', '_configstore_label2_'],
+        severityLabel: true,
+        parseManifestName: true,
+        batch: true,
+        minimumSeverity: 'medium',
+        autoGenerate: false,
+        save: false
+    });
+    t.end();
+});
+
+test('should be able to override saved config using command line arguments', async (t) => {
+    resetConf();
+    await init({ y: true, snykToken: 'custom' });
+    t.equal(conf.snykToken, 'custom');
+    t.equal(conf.snykOrg, '_configstore_snykOrg_');
+    t.end();
 });
 
 test('should be 100% configurable by cli arguments', async (t) => {

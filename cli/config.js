@@ -8,7 +8,8 @@ const { prompt } = require('enquirer');
 const { name: pkgName, version: pkgVersion } = require('../package.json');
 const Snyk = require('./snyk');
 
-const config = new Configstore(pkgName);
+// _test_configStore is only exposed for testing purposes
+const config = exports._test_configStore = new Configstore(pkgName);
 
 const help = `
 Usage: snyk-github-issue-creator [options]
@@ -71,7 +72,16 @@ exports.init = async (args) => {
         if (args.auto) {
             console.warn(chalk.yellowBright.bold('The --auto flag is deprecated: Use --yes/-y instead!'))
         }
-        Object.assign(conf, config.all);
+
+        // Get a copy of `args` only containing conf properties
+        const cleanedArgs = {...args};
+        delete cleanedArgs._;
+        delete cleanedArgs.auto;
+        delete cleanedArgs.yes;
+        delete cleanedArgs.y;
+
+        // By adding `cleanedArgs` at the end, the user can override any saved configuration with a command line flag
+        Object.assign(conf, config.all, cleanedArgs);
         return;
     }
 

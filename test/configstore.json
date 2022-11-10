@@ -1,0 +1,22 @@
+{
+	"snykToken": "_configstore_snykToken_",
+	"snykOrg": "_configstore_snykOrg_",
+	"snykProjects": [
+		"_configstore_snykProject1_",
+		"_configstore_snykProject2_"
+	],
+	"ghPat": "_configstore_ghPat_",
+	"ghOwner": "_configstore_owner_",
+	"ghRepo": "_configstore_repo_",
+	"projectName": "_configstore_projectName_",
+	"ghLabels": [
+		"_configstore_label1_",
+		"_configstore_label2_"
+	],
+	"severityLabel": true,
+	"parseManifestName": true,
+	"batch": true,
+	"minimumSeverity": "medium",
+	"autoGenerate": false,
+	"save": false
+}
