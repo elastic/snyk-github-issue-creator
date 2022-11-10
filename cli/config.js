@@ -68,7 +68,9 @@ exports.init = async (args) => {
         console.log(pkgVersion);
         return process.exit(0);
     } else if (args.auto || args.yes || args.y) {
-        // --auto is deprecated
+        if (args.auto) {
+            console.warn(chalk.yellowBright.bold('The --auto flag is deprecated: Use --yes/-y instead!'))
+        }
         Object.assign(conf, config.all);
         return;
     }
