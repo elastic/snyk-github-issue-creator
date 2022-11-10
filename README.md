@@ -108,6 +108,21 @@ setup questions:
     next time you run the program by using the `--yes` command line
     flag.
 
+### Non-interactive mode
+
+It's possible to run `snyk-github-issue-creator` in non-interative mode, i.e.
+without being prompted for any input on the command line. This is useful when
+running the tool as part of an automatic process, e.g. CI.
+
+To run non-interactive, you must specify all required config options either via
+a config file, via command line arguments/environment variables, or a
+combination of these. It's also required that you set the `--autoGenerate`.
+
+#### Limitations
+
+Batch mode is not supported in non-interactive mode. So either explicitly set
+`--no-batch` or ensure `--batch` isn't set.
+
 ### Picking Vulnerabilities
 
 After answering the setup questions, you will be presented with a list of
