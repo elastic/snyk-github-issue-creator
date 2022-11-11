@@ -2,8 +2,8 @@
 
 const test = require('tape');
 
-const { conf } = require('../cli/config');
-const { capitalize, compare, uniq, getProjectName, getUniqueProjectNamePrefixes, getGraph } = require('../cli/utils');
+const { conf } = require('../lib/config');
+const { capitalize, compare, uniq, getProjectName, getUniqueProjectNamePrefixes, getGraph } = require('../lib/utils');
 
 test('compare.text', (t) => {
     t.equal(compare.text('aaa', 'aaa'), 0);

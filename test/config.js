@@ -4,7 +4,7 @@ const os = require('os');
 const { join } = require('path');
 const test = require('tape');
 
-const { init, conf, _test_configStore: configStore } = require('../cli/config');
+const { init, conf, _test_configStore: configStore } = require('../lib/config');
 
 // Hack: override the internal path to the config file so we can use a different one for testing
 configStore.path = join(__dirname, 'configstore.json');
