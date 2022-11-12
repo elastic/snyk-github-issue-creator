@@ -48,18 +48,17 @@ $ snyk-github-issue-creator [options]
 -   `--ghLabels=...`: A comma-separated list of GitHub labels which will
     be applied to new issues (the label "Snyk" will always be applied).
 -   `--severityLabel, --no-severityLabel`: If specified, the GitHub
-    issue will have severity label(s) added automatically.
+    issue will have severity label(s) added automatically. Default: Yes.
 -   `--parseManifestName, --no-parseManifestName`: If specified, the
     dependency paths will start with the manifest name instead of the
-    project name.
+    project name. Default: Yes.
 -   `--batch, --no-batch`: If specified, the selected findings will be
-    combined into a single GitHub issue.
+    combined into a single GitHub issue. Default: Yes.
 -   `--minimumSeverity`: If specified, vulnerabilities will only be
     displayed if they meet the minimum severity level. Valid options are
-    'low', 'medium', 'high', or 'critical'. Default is 'medium' (if using
-    `--yes` and you have not saved this setting previously).
+    'low', 'medium', 'high', or 'critical'. Default: 'medium'.
 -   `--autoGenerate, --no-autoGenerate`: If specified, GitHub issues
-    will be automatically generated without a confirmation prompt.
+    will be automatically generated without a confirmation prompt. Default: No.
 -   `--stdin`: Read Snyk Organization UUID and Snyk Project UUID from
     STDIN. Used instead of `--snykOrg` / `--snykProjects`.
 
