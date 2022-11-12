@@ -46,7 +46,7 @@ $ snyk-github-issue-creator [options]
     should be created.
 -   `--projectName=...`: Alternative Snyk project name.
 -   `--ghLabels=...`: A comma-separated list of GitHub labels which will
-    be applied to new issues (the label "Snyk" will always be applied).
+    be applied to new issues (the label "snyk" will always be applied).
 -   `--severityLabel, --no-severityLabel`: If specified, the GitHub
     issue will have severity label(s) added automatically. Default: Yes.
 -   `--parseManifestName, --no-parseManifestName`: If specified, the
@@ -89,7 +89,7 @@ setup questions:
 -   **Project name**: Allows you to overrride the project name from Snyk
     (useful when runing Snyk with CI/CLI integration).
 -   **GitHub Labels**: Labels which will be applied to new issues (the
-    label `Snyk` will always be applied).
+    label `snyk` will always be applied).
 -   **Add severity labels to issues**: If specified, the GitHub issue
     will have severity label(s) added automatically.
 -   **Parse manifest name**: If specified, the dependency paths will
@@ -115,7 +115,8 @@ running the tool as part of an automatic process, e.g. CI.
 
 To run non-interactive, you must specify all required config options either via
 a config file, via command line arguments/environment variables, or a
-combination of these. It's also required that you set the `--autoGenerate`.
+combination of these. It's also required that you set the `--autoGenerate`
+flag.
 
 #### Limitations
 
