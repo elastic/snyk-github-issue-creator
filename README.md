@@ -119,6 +119,20 @@ a config file, via command line arguments/environment variables, or a
 combination of these. It's also required that you set the `--autoGenerate`
 flag.
 
+Example with minimum number of required arguments:
+
+```sh
+$ export SNYK_TOKEN=...
+$ export GH_PAT=...
+$ snyk-github-issue-creator \
+    --yes \
+    --autoGenerate \
+    --snykOrg=myOrg \
+    --snykProjects=foo,bar \
+    --ghOwner=myGitHubOrg \
+    --ghRepo=myGitHubRepo
+```
+
 #### Limitations
 
 Batch mode is not supported in non-interactive mode. So either explicitly set
