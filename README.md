@@ -44,9 +44,10 @@ $ snyk-github-issue-creator [options]
     the GitHub repository is located.
 -   `--ghRepo=...`: The name of the GitHub repository where issues
     should be created.
--   `--projectName=...`: Alternative Snyk project name.
+-   `--projectName=...`: Alternative Snyk project name (optional).
 -   `--ghLabels=...`: A comma-separated list of GitHub labels which will
-    be applied to new issues (the label "snyk" will always be applied).
+    be applied to new issues. The label "snyk" will always be applied
+    (optional).
 -   `--severityLabel, --no-severityLabel`: If specified, the GitHub
     issue will have severity label(s) added automatically. Default: Yes.
 -   `--parseManifestName, --no-parseManifestName`: If specified, the
