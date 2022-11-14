@@ -19,7 +19,7 @@
     "dependencies": {
         "@octokit/plugin-throttling": "^4.2.0",
         "@octokit/rest": "^19.0.4",
-        "chalk": "^3.0.0",
+        "chalk": "^4.1.2",
         "configstore": "^5.0.1",
         "enquirer": "^2.3.6",
         "lodash.flatten": "^4.4.0",
