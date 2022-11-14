@@ -4,7 +4,7 @@
     "description": "A CLI for creating GitHub issues based on vulnerabilities from your Snyk projects",
     "main": "lib/index.js",
     "scripts": {
-        "test": "tape 'test/**/*.js'"
+        "test": "standard && tape 'test/**/*.js'"
     },
     "bin": "index.js",
     "files": [
@@ -30,13 +30,7 @@
         "semver": "^7.3.2"
     },
     "devDependencies": {
-        "prettier": "2.0.1",
+        "standard": "^17.0.0",
         "tape": "^5.0.1"
-    },
-    "prettier": {
-        "trailingComma": "es5",
-        "tabWidth": 4,
-        "semi": true,
-        "singleQuote": true
     }
 }
