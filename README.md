@@ -60,6 +60,7 @@ $ snyk-github-issue-creator [options]
     'low', 'medium', 'high', or 'critical'. Default: 'medium'.
 -   `--autoGenerate, --no-autoGenerate`: If specified, GitHub issues
     will be automatically generated without a confirmation prompt. Default: No.
+-   `--dryRun`: Do not create any GitHub issues or labels.
 -   `--stdin`: Read Snyk Organization UUID and Snyk Project UUID from
     STDIN. Used instead of `--snykOrg` / `--snykProjects`.
 
