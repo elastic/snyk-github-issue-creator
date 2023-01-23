@@ -58,6 +58,9 @@ $ snyk-github-issue-creator [options]
 -   `--minimumSeverity`: If specified, vulnerabilities will only be
     displayed if they meet the minimum severity level. Valid options are
     'low', 'medium', 'high', or 'critical'. Default: 'medium'.
+-   `--sortByPackageName`, `--no-sortByPackageName`: If specified, Snyk
+    vulnerabilities will be sorted by package name when listing all
+    vulnerabilities in batch mode. Default: Sort by severity.
 -   `--autoGenerate, --no-autoGenerate`: If specified, GitHub issues
     will be automatically generated without a confirmation prompt. Default: No.
 -   `--dryRun`: Do not create any GitHub issues or labels.
@@ -102,6 +105,9 @@ setup questions:
 -   **Minimum severity level**: Vulnerabilities will only be displayed if
     they meet the minimum severity level. Valid options are 'low',
     'medium', or 'high'.
+-   **Sort vulnerabilites by package name instead of severity**: If specified,
+    Snyk vulnerabilities will be sorted by package name when listing all
+    vulnerabilities in batch mode. Default: Sort by severity.
 -   **Auto generate**: If specified, GitHub issues will be automatically
     generated without a confirmation prompt (e.g. if you want to run
     this as part of a CI pipeline).

@@ -72,6 +72,7 @@ test('should read test-only configstore json file', async (t) => {
     parseManifestName: true,
     batch: true,
     minimumSeverity: 'medium',
+    sortByPackageName: false,
     autoGenerate: false,
     save: false
   })
@@ -100,6 +101,7 @@ test('should be able to override saved config using environment variables and co
     parseManifestName: true,
     batch: true,
     minimumSeverity: 'medium',
+    sortByPackageName: false,
     autoGenerate: false,
     save: false
   })
@@ -144,6 +146,7 @@ test('should be 100% configurable by cli arguments', async (t) => {
     parseManifestName: true,
     batch: false,
     minimumSeverity: '_minimumSeverity_',
+    sortByPackageName: true,
     autoGenerate: true,
     save: false
   })
@@ -164,6 +167,7 @@ test('should be 100% configurable by cli arguments', async (t) => {
     parseManifestName: true,
     batch: false,
     minimumSeverity: '_minimumSeverity_',
+    sortByPackageName: true,
     autoGenerate: true,
     save: false
   })
@@ -203,6 +207,7 @@ test('should be able to set only required cli arguments and fall back to default
     parseManifestName: true,
     batch: true,
     minimumSeverity: 'medium',
+    sortByPackageName: false,
     autoGenerate: false,
     save: false
   })
