@@ -86,7 +86,13 @@ setup questions:
 -   **GitHub Personal Access Token**: A _GitHub Personal Access Token_
     with privilege to create new issues in the repository specified
     under _"GitHub Repo"_ (create a new token at
-    https://github.com/settings/tokens/new).
+    https://github.com/settings/personal-access-tokens/new). The minimum fine-grained access token configuration is:
+       - Resource owner: owner of the repository specified
+    under _"GitHub Repo"_
+       - Repository access: Only selected repositories -> repository specified
+    under _"GitHub Repo"_
+       - Permissions -> Repository Permissions -> Issues: Read and write
+       - Permissions -> Repository Permissions -> Metadata: Read-only
 -   **GitHub Owner**: The name of the owner or organization under which
     the GitHub repository is located.
 -   **GitHub Repo**: The name of the GitHub repository where issues
